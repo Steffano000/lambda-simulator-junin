@@ -3,7 +3,7 @@
  * y construcción del contexto de acción. Los controladores concretos solo
  * orquestan: la lógica de negocio vive en src/domain.
  */
-import type { ActionContext } from '@/domain/actions';
+import type { ActionContext, ToolId } from '@/domain/actions';
 import type { ClimateScenario } from '@/domain/climate';
 import { EnvironmentModel } from '@/domain/climate';
 import type { TileNode } from '@/domain/grid';
@@ -26,6 +26,13 @@ export abstract class BaseController {
 
   protected notify(tipo: Mensaje['tipo'], texto: string, detalle?: string[]): void {
     this.set({ mensaje: { tipo, texto, detalle } });
+  }
+
+  /** Agrega una fila a la bitácora (solo si la acción se aplicó en alguna celda). */
+  protected registrar(tool: ToolId, tileIds: readonly string[], cultivo?: string): void {
+    if (tileIds.length === 0) return;
+    const s = this.state;
+    this.set({ bitacora: [...s.bitacora, { dia: s.dia, tool, tileIds: [...tileIds], cultivo }] });
   }
 
   dismissMessage(): void {
@@ -60,6 +67,8 @@ export abstract class BaseController {
       clima: this.escenario(state).mes(mes),
       cropOf: (nombre) => this.deps.crops.find(nombre),
       soilOf: this.deps.soilOf,
+      hidraulica: this.deps.hidraulica,
+      direccionArado: state.direccionArado,
     };
   }
 }

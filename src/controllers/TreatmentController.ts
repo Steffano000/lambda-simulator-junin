@@ -1,11 +1,17 @@
 /** Pasos 2–3 del flujo · Acciones y tratamientos sobre las celdas seleccionadas. */
 import type { ToolId, ToolInfo } from '@/domain/actions';
 import type { Crop } from '@/domain/crops';
+import type { OrientacionSurco } from '@/domain/grid';
 import { BaseController } from './BaseController';
 
 export class TreatmentController extends BaseController {
   selectTool(herramienta: ToolId | null): void {
     this.set({ herramienta });
+  }
+
+  /** Orientación de los surcos del próximo arado. */
+  setDireccionArado(direccionArado: OrientacionSurco): void {
+    this.set({ direccionArado });
   }
 
   /** Tratamientos que corresponden al terreno y a su estado actual (sobre todo el terreno). */
@@ -37,6 +43,7 @@ export class TreatmentController extends BaseController {
     const r = this.deps.actions.executeMany(s.herramienta, s.seleccion, s.tiles, this.context());
     const detalle = agruparMotivos(r.omitidas.map((o) => o.motivo));
     this.set({ tiles: r.tiles });
+    this.registrar(s.herramienta, r.aplicadas);
     this.notify(r.aplicadas.length ? 'ok' : 'error', r.mensaje, detalle);
   }
 

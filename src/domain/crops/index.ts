@@ -47,3 +47,11 @@ export interface YieldStrategy {
 }
 
 export type FenologiaEngine = (dia: number, cultivo: Cultivo, clima: readonly ClimaMes[]) => EstadoCultivo;
+export {
+  DESCANSO_DIAS,
+  ETIQUETA_DEMANDA,
+  EXTRACCION_N,
+  RECUPERACION_DESCANSO,
+  demandaN,
+  type DemandaN,
+} from './nutrients';

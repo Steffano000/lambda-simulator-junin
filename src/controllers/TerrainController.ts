@@ -1,5 +1,5 @@
 /** Paso 1 del flujo · Selección del terreno: vista previa, confirmación y reinicio. */
-import type { TerrainOptions } from '@/domain/terrain';
+import { SoilMix, type TerrainOptions } from '@/domain/terrain';
 import { OPCIONES_INICIALES } from '@/store/gridSlice';
 import { BaseController } from './BaseController';
 
@@ -14,6 +14,22 @@ export class TerrainController extends BaseController {
       tiles: this.deps.terrains.createTiles(profile),
       seleccion: [],
     });
+  }
+
+  /**
+   * Cambia el porcentaje de una clase dentro de la mezcla actual (variable de la UI).
+   * Los porcentajes se renormalizan: la mezcla sigue sumando 100 %.
+   */
+  setPorcentaje(clase: string, porcentaje: number): void {
+    const mezcla = SoilMix.de(this.state.opcionesTerreno.mezcla).conPorcentaje(clase, porcentaje);
+    this.preview({ mezcla: mezcla.datos });
+  }
+
+  /** Carga uno de los presets de data/terrenos_mezclas.json. */
+  usarMezcla(id: string): void {
+    const preset = this.deps.terrains.mezclaPorId(id);
+    if (!preset) return;
+    this.preview({ mezcla: preset.datos });
   }
 
   setMesInicio(mes: number): void {
@@ -32,6 +48,9 @@ export class TerrainController extends BaseController {
       herramienta: null,
       dia: 0,
       plantaciones: [],
+      bitacora: [],
+      reportes: [],
+      reporteAbierto: null,
       cosechas: [],
       correccion: null,
       ultimoAvance: null,
@@ -43,6 +62,15 @@ export class TerrainController extends BaseController {
   reset(): void {
     this.set({ terreno: null, fase: 'terreno', cultivo: null, mensaje: null });
     this.preview(this.state.opcionesTerreno ?? OPCIONES_INICIALES);
-    this.set({ dia: 0, plantaciones: [], cosechas: [], correccion: null, ultimoAvance: null });
+    this.set({
+      dia: 0,
+      plantaciones: [],
+      bitacora: [],
+      reportes: [],
+      reporteAbierto: null,
+      cosechas: [],
+      correccion: null,
+      ultimoAvance: null,
+    });
   }
 }

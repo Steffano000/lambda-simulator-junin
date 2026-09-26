@@ -2,11 +2,13 @@
 import type { StateCreator } from 'zustand';
 import { ClimateRepository } from '@/data';
 import type { Cosecha, ToolId } from '@/domain/actions';
+import type { RegistroAccion, ReporteCosecha } from '@/domain/economy';
+import type { OrientacionSurco } from '@/domain/grid';
 import type { Plantacion } from '@/domain/plantation';
 import type { ResumenAvance } from '@/domain/simulation';
 
 /** Flujo: Terreno → Tratamiento → Cultivos (la plantación y el ambiente son paneles fijos). */
-export type Fase = 'terreno' | 'tratamiento' | 'cultivos';
+export type Fase = 'terreno' | 'tratamiento' | 'cultivos' | 'cosecha';
 
 export interface Mensaje {
   tipo: 'ok' | 'error';
@@ -29,6 +31,16 @@ export interface SimulationSlice {
   /** Día simulado desde el inicio */
   dia: number;
   herramienta: ToolId | null;
+  /** Orientación de los surcos al arar */
+  direccionArado: OrientacionSurco;
+  /** Vista previa translúcida del cultivo elegido sobre las celdas listas (fase cultivos) */
+  previaCultivo: boolean;
+  /** Bitácora de acciones aplicadas (fuente del resumen de cosecha) */
+  bitacora: RegistroAccion[];
+  /** Informes de recolección completada */
+  reportes: ReporteCosecha[];
+  /** Informe de cosecha abierto en pantalla */
+  reporteAbierto: string | null;
   cultivo: string | null;
   correccion: Correccion | null;
   plantaciones: Plantacion[];
@@ -48,6 +60,11 @@ export const createSimulationSlice: StateCreator<SimulationSlice, [], [], Simula
   mesInicio: 10,
   dia: 0,
   herramienta: null,
+  direccionArado: 'x',
+  previaCultivo: true,
+  bitacora: [],
+  reportes: [],
+  reporteAbierto: null,
   cultivo: null,
   correccion: null,
   plantaciones: [],

@@ -5,12 +5,14 @@
 import climaJson from '@data/clima_escenarios.json';
 import cultivosJson from '@data/cultivos.json';
 import metaJson from '@data/meta.json';
+import mezclasJson from '@data/terrenos_mezclas.json';
 import terrenosJson from '@data/terrenos.json';
-import type { ClimaEscenarios, ClimaMes, Cultivo, Meta, Terreno } from './types';
+import type { ClimaEscenarios, ClimaMes, Cultivo, MezclaSuelos, Meta, Terreno } from './types';
 
 const cultivos = cultivosJson.cultivos as Cultivo[];
 const escenarios = climaJson.clima_escenarios as ClimaEscenarios;
 const terrenos = terrenosJson.terrenos as Terreno[];
+const mezclas = mezclasJson.mezclas as MezclaSuelos[];
 
 export const CropRepository = {
   all: (): readonly Cultivo[] => cultivos,
@@ -25,6 +27,11 @@ export const ClimateRepository = {
 export const SoilRepository = {
   all: (): readonly Terreno[] => terrenos,
   byClass: (clase: string): Terreno | undefined => terrenos.find((t) => t.clase === clase),
+};
+
+export const SoilMixRepository = {
+  all: (): readonly MezclaSuelos[] => mezclas,
+  byId: (id: string): MezclaSuelos | undefined => mezclas.find((m) => m.id === id),
 };
 
 export const MetaRepository = {

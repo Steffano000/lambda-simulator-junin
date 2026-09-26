@@ -101,10 +101,102 @@ export const serie = {
   demanda: '#D55E00',
 } as const;
 
+/**
+ * Estados de hidratación (ordinales: seco → encharcado). Rampa divergente BrBG, apta para
+ * daltonismo: marrón = falta de agua, neutro = adecuada, verde azulado = exceso. La
+ * luminosidad baja hacia ambos extremos; "encharcado" además se dibuja con lámina de agua
+ * en 3D (codificación secundaria) y siempre va con etiqueta en la leyenda.
+ */
+export const hidratacion = {
+  seco: '#8C510A',
+  baja: '#D8B365',
+  adecuada: '#E9E7DC',
+  alta: '#5AB4AC',
+  saturado: '#01665E',
+  encharcado: '#003C30',
+} as const;
+
+/**
+ * Paleta natural de cada cultivo (modelos 3D e iconos). La etapa fenológica NO se lee de
+ * estos colores sino de la forma (tamaño, flores, frutos) y del anillo de etapa en la base,
+ * que sí usa `etapa` (design.md §3). Clave = `nombre` de data/cultivos.json.
+ */
+export const planta = {
+  Papa: { tallo: '#4F7F34', hoja: '#4E8A3A', flor: '#B79AD6', fruto: '#A0703F', seca: '#9C9A4A' },
+  'Maíz amiláceo': { tallo: '#6E9A3C', hoja: '#5E9E3A', flor: '#D8C27A', fruto: '#E9DCA8', seca: '#C2A95A' },
+  Quinua: { tallo: '#6A8F3A', hoja: '#7FA64A', flor: '#C24E3C', fruto: '#E0A83A', seca: '#B8964A' },
+  'Haba (grano seco)': {
+    tallo: '#4F7F3A',
+    hoja: '#5E8C4A',
+    flor: '#F2F0EA',
+    fruto: '#6FA052',
+    seca: '#6B5A3A',
+  },
+  'Avena forrajera': {
+    tallo: '#7DA24E',
+    hoja: '#8DB25A',
+    flor: '#C9B56A',
+    fruto: '#D8C27A',
+    seca: '#C7B26A',
+  },
+} as const satisfies Record<
+  string,
+  { tallo: string; hoja: string; flor: string; fruto: string; seca: string }
+>;
+
+export type PaletaPlanta = (typeof planta)[keyof typeof planta];
+
+/** Elementos del clima en la escena: nubes (claras / de lluvia) y gotas. */
+export const clima = {
+  nube: '#EEF1F5',
+  nubeLluvia: '#8D96A3',
+  gota: '#9ECAE1',
+} as const;
+
 /** Fondo de la escena 3D por tema (debe casar con --ui-scene en styles/index.css). */
 export const scene = {
   light: '#EEF1F4',
   dark: '#14181D',
+} as const;
+
+/**
+ * Cielo de la escena según el estado del tiempo del día (src/domain/climate/CieloVisual
+ * · src/scene/sky). Las claves son los `EstadoCieloVisual`.
+ *
+ * - `claro` / `oscuro`: fondo del lienzo 3D, uno por tema (no es un dato, es ambiente).
+ * - `luz`: cuánto apaga la luz la escena (un día de lluvia vería la parcela más apagada).
+ *
+ * Tonos desaturados y de luminancia parecida entre estados: el fondo acompaña al dato sin
+ * competir con el color de los overlays.
+ */
+export const cielo = {
+  despejado: { claro: '#D8E7F4', oscuro: '#18242F', luz: 1 },
+  calor: { claro: '#EFE1C6', oscuro: '#31281B', luz: 1.08 },
+  nublado: { claro: '#CBD1D7', oscuro: '#212630', luz: 0.8 },
+  niebla: { claro: '#D6D9D6', oscuro: '#262A29', luz: 0.72 },
+  lluvia: { claro: '#A9B6C5', oscuro: '#1C222A', luz: 0.62 },
+  'lluvia-fuerte': { claro: '#8C9AAC', oscuro: '#151A20', luz: 0.5 },
+  helada: { claro: '#E0EBF4', oscuro: '#1E2B37', luz: 0.86 },
+} as const;
+
+/**
+ * Luces de la escena 3D (src/scene/lighting): cielo de la hemisférica, rebote del suelo
+ * y direccional. Sin sombras: la legibilidad del estado gana al realismo (§2).
+ */
+export const luz = {
+  cielo: '#FFFFFF',
+  /** Rebote cálido del terreno en la cara inferior de los bloques. */
+  suelo: '#8A7A66',
+  direccional: '#FFFFFF',
+} as const;
+
+/**
+ * Marcas sobre la cara superior de la celda: selección del usuario y celdas que no
+ * cumplen los requisitos del cultivo. Nunca compiten con la rampa del overlay.
+ */
+export const marcador = {
+  seleccion: '#FFFFFF',
+  resaltada: chi[25],
 } as const;
 
 export type SoilKey = keyof typeof soil;
@@ -112,4 +204,20 @@ export type SurfaceKey = keyof typeof surface;
 export type EtapaKey = keyof typeof etapa;
 export type ChiEstado = keyof typeof chiEstado;
 
-export const tokens = { soil, surface, humedad, chi, chiEstado, divergente, etapa, serie, scene } as const;
+export const tokens = {
+  soil,
+  surface,
+  humedad,
+  chi,
+  chiEstado,
+  divergente,
+  etapa,
+  serie,
+  hidratacion,
+  clima,
+  planta,
+  scene,
+  cielo,
+  luz,
+  marcador,
+} as const;

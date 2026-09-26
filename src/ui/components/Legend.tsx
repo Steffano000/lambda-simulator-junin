@@ -2,6 +2,8 @@
  * Leyenda obligatoria y visible de la capa activa (design.md §2, WCAG):
  * el color nunca es el único canal, siempre va con etiqueta.
  */
+import { ESTADOS_HIDRICOS, ETIQUETA_HIDRICA } from '@/domain/hydrology';
+import { SoilMix } from '@/domain/terrain';
 import { useSimStore, type Overlay } from '@/store/useSimStore';
 import { chiColor, humidityColor, phColor, soilColor, stageColor } from '@/theme/ramps';
 import { surface, tokens } from '@/theme/tokens';
@@ -16,6 +18,10 @@ const legends: Record<Exclude<Overlay, 'suelo'>, { title: string; items: Item[] 
   humedad: {
     title: 'Humedad (% entre PMP y CC)',
     items: [0, 25, 50, 75, 100].map((v) => ({ label: `${v} %`, color: humidityColor(v) })),
+  },
+  hidratacion: {
+    title: 'Estado hídrico del suelo',
+    items: ESTADOS_HIDRICOS.map((e) => ({ label: ETIQUETA_HIDRICA[e], color: tokens.hidratacion[e] })),
   },
   ph: {
     title: 'pH del suelo',
@@ -70,13 +76,19 @@ function Group({ title, items }: { title: string; items: Item[] }) {
 
 export function Legend() {
   const overlay = useSimStore((s) => s.overlay);
-  const clase = useSimStore((s) => s.tiles[0]?.suelo.clase ?? '');
+  // La parcela es una mezcla: la leyenda lista las clases que hay, con su porcentaje.
+  const mezcla = useSimStore((s) => s.opcionesTerreno.mezcla);
   const hayCultivos = useSimStore((s) => s.tiles.some((t) => t.vegetacionId !== null));
   const hayCanal = useSimStore((s) => s.tiles.some((t) => t.canal));
 
-  const base =
+  const base: { title: string; items: Item[] } =
     overlay === 'suelo'
-      ? { title: 'Suelo', items: [{ label: `${clase} · baldío`, color: soilColor(clase) }] }
+      ? {
+          title: 'Suelo',
+          items: SoilMix.de(mezcla)
+            .partes()
+            .map((p) => ({ label: `${p.clase} · ${p.porcentaje} %`, color: soilColor(p.clase) })),
+        }
       : legends[overlay];
   const items = hayCanal ? [...base.items, { label: 'Canal de riego', color: surface.agua }] : base.items;
 

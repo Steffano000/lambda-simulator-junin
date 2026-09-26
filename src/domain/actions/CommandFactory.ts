@@ -2,16 +2,9 @@
  * Paso 02 · Factory Method de herramientas: resuelve un `ToolId` a su comando
  * sin condicionales (registro de constructores). Agregar una herramienta = una línea.
  */
-import { CosecharCommand, RemoverCommand, SembrarCommand } from './commands/plantacion';
-import {
-  AbonarCommand,
-  AcidificarCommand,
-  ArarCommand,
-  CanalCommand,
-  DrenarCommand,
-  EncalarCommand,
-  RegarCommand,
-} from './commands/tratamientos';
+import { CosecharCommand, DescansarCommand, RemoverCommand, SembrarCommand } from './commands/plantacion';
+import { CanalCommand, DrenarCommand, InundarCommand, RegarCommand } from './commands/riego';
+import { AbonarCommand, AcidificarCommand, ArarCommand, EncalarCommand } from './commands/tratamientos';
 import type { CategoriaAccion, TileCommand } from './TileCommand';
 
 const registry = {
@@ -21,11 +14,13 @@ const registry = {
   'abonar-organico': () => new AbonarCommand('organico'),
   'abonar-quimico': () => new AbonarCommand('quimico'),
   regar: () => new RegarCommand(),
+  inundar: () => new InundarCommand(),
   drenar: () => new DrenarCommand(),
   canal: () => new CanalCommand(),
   sembrar: () => new SembrarCommand(),
   cosechar: () => new CosecharCommand(),
   remover: () => new RemoverCommand(),
+  descansar: () => new DescansarCommand(),
 } satisfies Record<string, () => TileCommand>;
 
 export type ToolId = keyof typeof registry;

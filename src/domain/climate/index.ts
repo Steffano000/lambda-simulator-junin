@@ -26,6 +26,18 @@ export {
   type Modificador,
   type TipoModificador,
 } from './EnvironmentModel';
+export {
+  ETIQUETA_INTENSIDAD,
+  PARAM_METEO,
+  WeatherGenerator,
+  probabilidadLluvia,
+  type ClimaDelDia,
+  type EstadoCielo,
+  type EventoLluvia,
+  type Intensidad,
+  type Validacion,
+} from './WeatherGenerator';
+export { ETIQUETA_CIELO, UMBRALES_CIELO, cieloDe, type EstadoCieloVisual } from './CieloVisual';
 
 export type TipoEvento = 'HELADA_METEOROLOGICA' | 'GRANIZADA' | 'SEQUIA';
 

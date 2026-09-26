@@ -4,10 +4,11 @@
  */
 import { useMemo } from 'react';
 import { container } from '@/app/container';
-import { useClima, useControllers } from '@/controllers/hooks';
+import { useClimaHoy, useControllers } from '@/controllers/hooks';
 import type { Plantacion } from '@/domain/plantation';
 import { useSimStore } from '@/store/useSimStore';
 import { chiColor, stageColor } from '@/theme/ramps';
+import { CropIcon } from '../icons/CropIcon';
 import { Section } from './Section';
 import { Sparkline } from './Sparkline';
 
@@ -34,25 +35,37 @@ const TONO = {
 } as const;
 
 function PlantationCard({ p }: { p: Plantacion }) {
-  const { planting } = useControllers();
+  const { planting, harvest } = useControllers();
+  const reporte = useSimStore((s) => [...s.reportes].reverse().find((x) => x.plantacionId === p.id));
   const tiles = useSimStore((s) => s.tiles);
   const dia = useSimStore((s) => s.dia);
   const terreno = useSimStore((s) => s.terreno);
-  const { diario } = useClima();
+  const hoy = useClimaHoy();
   const crop = container.crops.create(p.cultivo);
   const porId = useMemo(() => new Map(tiles.map((t) => [t.id, t])), [tiles]);
   const r = container.plantations.resumir(p, porId, crop, dia);
   const condiciones = terreno
-    ? container.plantations.condiciones(p, porId, crop, diario, terreno.textura)
+    ? container.plantations.condiciones(
+        p,
+        porId,
+        crop,
+        { tmed: hoy.tmed, tmin: hoy.tmin, et0: hoy.et0, lluviaMm: hoy.lluvia?.mm ?? 0 },
+        container.hidraulica(terreno.clase)?.saturacionPct ?? 100,
+      )
     : [];
 
   if (r.activas === 0) {
     return (
       <li className="rounded-md border border-ui-border p-2 text-2xs text-ui-ink-muted">
-        <span className="font-medium text-ui-ink">
-          {p.id} · {p.cultivo}
+        <span className="inline-flex items-center gap-1 font-medium text-ui-ink">
+          <CropIcon nombre={p.cultivo} /> {p.id} · {p.cultivo}
         </span>{' '}
         — finalizada · cosechado {p.cosechadoKg.toFixed(2)} kg
+        {reporte && (
+          <button className="btn mt-1 w-full justify-center" onClick={() => harvest.abrir(reporte.id)}>
+            Ver resumen de la recolección
+          </button>
+        )}
       </li>
     );
   }
@@ -61,9 +74,10 @@ function PlantationCard({ p }: { p: Plantacion }) {
     <li className="rounded-md border border-ui-border p-2.5">
       <header className="mb-1.5 flex items-center justify-between gap-2">
         <button
-          className="text-left text-xs font-semibold hover:underline"
+          className="flex items-center gap-1.5 text-left text-xs font-semibold hover:underline"
           onClick={() => planting.selectPlantation(p.id)}
         >
+          <CropIcon nombre={p.cultivo} className="text-lg" />
           {p.id} · {p.cultivo}
         </button>
         <span className="flex items-center gap-1 text-2xs font-medium">
@@ -107,7 +121,7 @@ function PlantationCard({ p }: { p: Plantacion }) {
         <button
           className="btn flex-1 justify-center"
           disabled={r.maduras === 0}
-          onClick={() => planting.harvest(p.id)}
+          onClick={() => harvest.harvest(p.id)}
         >
           Cosechar {r.maduras > 0 ? `(${r.maduras})` : ''}
         </button>

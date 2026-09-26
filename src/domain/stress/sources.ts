@@ -7,7 +7,6 @@
  * refleja el clima local; solo se informa como condición.
  */
 import type { Cultivo } from '@/data/types';
-import type { Textura } from '../terrain/TerrainProfile';
 
 export const TASAS_SALUD = {
   /** Pérdida máxima diaria por déficit hídrico (con humedad 0 %) */
@@ -16,8 +15,13 @@ export const TASAS_SALUD = {
   helada: 15,
   /** Pérdida diaria con tmed fuera del rango vital (< t_base o > t_opt_max) */
   termico: 1,
-  /** Pérdida diaria por anegamiento en suelos pesados saturados */
-  anegamiento: 1,
+  /** Pérdida diaria con agua gravitacional en el perfil (suelo saturado) */
+  exceso: 0.5,
+  /** Pérdida diaria base por encharcamiento; crece con los días seguidos */
+  anegamiento: 1.5,
+  /** Aumento por cada día consecutivo encharcado (asfixia de raíces), con tope */
+  anegamientoPorDia: 0.5,
+  anegamientoTope: 4,
   /** Recuperación diaria sin estrés */
   recuperacion: 0.5,
 } as const;
@@ -25,12 +29,15 @@ export const TASAS_SALUD = {
 export interface DiaCultivo {
   tmed: number;
   tmin: number;
+  /** % del agua útil (> 100 = agua gravitacional) */
   humedad: number;
   umbralHumedad: number;
-  textura: Textura;
+  /** Suelo saturado con agua libre encima */
+  encharcado: boolean;
+  diasEncharcado: number;
 }
 
-export type StressId = 'hidrico' | 'helada' | 'termico' | 'anegamiento';
+export type StressId = 'hidrico' | 'helada' | 'termico' | 'exceso' | 'anegamiento';
 
 export interface StressEffect {
   id: StressId;
@@ -52,7 +59,7 @@ export class HidricoStress implements StressSource {
     return {
       id: this.id,
       penalidad: TASAS_SALUD.hidricoMax * deficit,
-      descripcion: `Déficit hídrico: humedad ${Math.round(d.humedad)} % bajo ${d.umbralHumedad} %.`,
+      descripcion: `Déficit hídrico: humedad ${Math.round(d.humedad)} % bajo ${d.umbralHumedad} %; crece más lento.`,
     };
   }
 }
@@ -90,14 +97,32 @@ export class TermicoStress implements StressSource {
   }
 }
 
+/** Agua gravitacional en el perfil (sobre CC) sin llegar a encharcar. */
+export class ExcesoStress implements StressSource {
+  readonly id = 'exceso';
+  evaluar(d: DiaCultivo): StressEffect | null {
+    if (d.encharcado || d.humedad <= 100) return null;
+    return {
+      id: this.id,
+      penalidad: TASAS_SALUD.exceso,
+      descripcion: 'Exceso de humedad: menos oxígeno en raíces y menor absorción de nutrientes.',
+    };
+  }
+}
+
+/** Suelo saturado con agua encima; el daño crece mientras persiste. */
 export class AnegamientoStress implements StressSource {
   readonly id = 'anegamiento';
   evaluar(d: DiaCultivo): StressEffect | null {
-    if (d.textura !== 'pesada' || d.humedad < 98) return null;
+    if (!d.encharcado) return null;
+    const penalidad = Math.min(
+      TASAS_SALUD.anegamientoTope,
+      TASAS_SALUD.anegamiento + TASAS_SALUD.anegamientoPorDia * d.diasEncharcado,
+    );
     return {
       id: this.id,
-      penalidad: TASAS_SALUD.anegamiento,
-      descripcion: 'Anegamiento: suelo pesado saturado, raíces sin aire.',
+      penalidad,
+      descripcion: `Encharcamiento (${d.diasEncharcado + 1} día(s) seguidos): asfixia de raíces.`,
     };
   }
 }
@@ -106,5 +131,6 @@ export const DEFAULT_SOURCES: readonly StressSource[] = [
   new HidricoStress(),
   new HeladaStress(),
   new TermicoStress(),
+  new ExcesoStress(),
   new AnegamientoStress(),
 ];

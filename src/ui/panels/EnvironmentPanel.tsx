@@ -1,20 +1,26 @@
 /**
- * Panel único de contexto ambiental: escenario, condiciones del mes, modificadores,
- * efectos sobre los cultivos plantados y cambios del último avance de tiempo.
+ * Panel único de contexto ambiental: escenario, tiempo de hoy (nubes, lluvia, validación),
+ * condiciones del mes, estado hídrico del terreno con su efecto en las plantas y lo que
+ * cambió en el último avance de tiempo.
  */
+import type { ReactNode } from 'react';
 import { container } from '@/app/container';
 import { useClima } from '@/controllers/hooks';
 import { MESES } from '@/domain/crops';
 import type { StressId } from '@/domain/stress';
 import { useSimStore } from '@/store/useSimStore';
 import { ScenarioPicker } from '../climate/ScenarioPicker';
+import { VARIABLE_CLIMA } from '../icons';
+import { HydrationSummary } from './environment/HydrationSummary';
+import { WeatherNow } from './environment/WeatherNow';
 import { Section } from './Section';
 
 const ESTRES: Record<StressId, string> = {
   hidrico: 'déficit hídrico',
   helada: 'helada',
   termico: 'estrés térmico',
-  anegamiento: 'anegamiento',
+  exceso: 'exceso de humedad',
+  anegamiento: 'encharcamiento',
 };
 
 const TONO = {
@@ -23,44 +29,31 @@ const TONO = {
   neutral: 'border-ui-border text-ui-ink-muted',
 } as const;
 
-function Dato({ label, value, unit }: { label: string; value: string; unit: string }) {
-  return (
-    <div className="rounded-md bg-ui-panel-2 px-2 py-1.5">
-      <div className="text-2xs text-ui-ink-muted">{label}</div>
-      <div className="value text-ui-ink">
-        {value} <span className="text-ui-ink-muted">{unit}</span>
-      </div>
-    </div>
-  );
+function Subtitulo({ children }: { children: ReactNode }) {
+  return <h3 className="mt-3 mb-1 text-2xs font-semibold text-ui-ink">{children}</h3>;
 }
+
+const mm = (v: number) => `${v.toFixed(1)} mm`;
 
 export function EnvironmentPanel() {
   const escenario = useSimStore((s) => s.escenario);
   const avance = useSimStore((s) => s.ultimoAvance);
-  const hayPlantas = useSimStore((s) => s.plantaciones.length > 0);
-  const { mes, mensual, diario, modificadores } = useClima();
+  const { mes, mensual, modificadores } = useClima();
 
   return (
     <Section titulo="Contexto ambiental">
-      <div className="mb-3">
-        <ScenarioPicker />
-        {container.scenarios.existe(escenario) && container.scenarios.create(escenario).personalizado && (
-          <p className="mt-1 text-2xs text-ui-ink-muted">Escenario personalizado (sandbox climático).</p>
-        )}
-      </div>
+      <ScenarioPicker />
+      {container.scenarios.existe(escenario) && container.scenarios.create(escenario).personalizado && (
+        <p className="mt-1 text-2xs text-ui-ink-muted">Escenario personalizado (sandbox climático).</p>
+      )}
 
-      <p className="mb-1.5 text-2xs text-ui-ink-muted">
-        Condiciones de <strong className="text-ui-ink">{MESES[mes - 1]}</strong>
-      </p>
-      <div className="mb-3 grid grid-cols-2 gap-1.5">
-        <Dato label="Lluvia" value={diario.lluvia.toFixed(1)} unit="mm/día" />
-        <Dato label="ET0" value={diario.et0.toFixed(1)} unit="mm/día" />
-        <Dato label="T media" value={mensual.tmed.toFixed(1)} unit="°C" />
-        <Dato label="T mínima" value={mensual.tmin.toFixed(1)} unit="°C" />
-      </div>
+      <Subtitulo>Tiempo de hoy</Subtitulo>
+      <WeatherNow />
 
-      <h3 className="mb-1 text-2xs font-semibold text-ui-ink">Modificadores del mes</h3>
-      <ul className="mb-3 space-y-1">
+      <Subtitulo>
+        Mes de {MESES[mes - 1]} · {mensual.lluvia} mm de lluvia · ET0 {mensual.et0} mm
+      </Subtitulo>
+      <ul className="space-y-1">
         {modificadores.map((m) => (
           <li
             key={m.titulo}
@@ -72,15 +65,28 @@ export function EnvironmentPanel() {
         ))}
       </ul>
 
+      <Subtitulo>Estado hídrico del terreno</Subtitulo>
+      <HydrationSummary />
+
       {avance && (
         <>
-          <h3 className="mb-1 text-2xs font-semibold text-ui-ink">
+          <Subtitulo>
             Último avance · día {avance.desde} → {avance.hasta}
-          </h3>
+          </Subtitulo>
           <ul className="space-y-0.5 text-2xs text-ui-ink-muted">
             <li>
-              Lluvia <span className="value text-ui-ink">{avance.lluviaMm.toFixed(0)} mm</span> · ET0{' '}
+              Lluvia <span className="value text-ui-ink">{avance.lluviaMm.toFixed(0)} mm</span> en{' '}
+              {avance.eventos.length} día(s) · ET0{' '}
               <span className="value text-ui-ink">{avance.et0Mm.toFixed(0)} mm</span>
+            </li>
+            <li>
+              Por celda: infiltró <span className="value text-ui-ink">{mm(avance.infiltradoMm)}</span>,
+              escurrió <span className="value text-ui-ink">{mm(avance.escorrentiaMm)}</span>, drenó{' '}
+              <span className="value text-ui-ink">{mm(avance.drenadoMm)}</span>
+            </li>
+            <li>
+              Evaporó <span className="value text-ui-ink">{mm(avance.evaporadoMm)}</span> · transpiraron los
+              cultivos <span className="value text-ui-ink">{mm(avance.transpiradoMm)}</span>
             </li>
             <li>
               Humedad media del suelo{' '}
@@ -97,17 +103,13 @@ export function EnvironmentPanel() {
               </li>
             )}
             {(Object.entries(avance.estres) as [StressId, number][]).map(([id, n]) => (
-              <li key={id} className="text-chi-estresado">
+              <li key={id} className="flex items-center gap-1.5 text-chi-estresado">
+                {id === 'hidrico' && <VARIABLE_CLIMA.deficit className="shrink-0 text-xs" />}
                 {ESTRES[id]}: {n} día(s)-celda
               </li>
             ))}
           </ul>
         </>
-      )}
-      {!avance && hayPlantas && (
-        <p className="text-2xs text-ui-ink-muted">
-          Avanza el tiempo para ver cómo el ambiente afecta a los cultivos.
-        </p>
       )}
     </Section>
   );

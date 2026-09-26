@@ -2,10 +2,11 @@
  * Flujo alternativo: corrección de celdas que no cumplen los requisitos del cultivo.
  * Lista lo que falta, sugiere el tratamiento y permite volver a cultivos sin reiniciar.
  */
-import { container } from '@/app/container';
 import { useControllers } from '@/controllers/hooks';
 import { useSimStore } from '@/store/useSimStore';
 import { IconBack, IconCheck } from '../components/icons';
+import { CropIcon } from '../icons/CropIcon';
+import { ToolChips } from '../icons/ToolChip';
 import { Section } from '../panels/Section';
 
 export function CorrectionBanner() {
@@ -24,6 +25,7 @@ export function CorrectionBanner() {
 
   return (
     <Section titulo={`Corrigiendo para ${correccion.cultivo}`}>
+      <CropIcon nombre={correccion.cultivo} className="float-right -mt-6 text-2xl" />
       {completo ? (
         <p className="mb-2 flex items-center gap-1.5 text-xs text-chi-saludable">
           <IconCheck /> Todas las celdas cumplen ya los requisitos.
@@ -49,9 +51,8 @@ export function CorrectionBanner() {
                       <span className="font-medium text-ui-ink">{p.requisito.condicion}</span>
                       <span className="value">{p.tileIds.length} celdas</span>
                     </div>
-                    <div className="text-ui-ink-muted">
-                      Tratamiento:{' '}
-                      {p.herramientas.map((h) => container.commands.create(h).etiqueta).join(' o ') || '—'}
+                    <div className="mt-1 flex flex-wrap items-center gap-1 text-ui-ink-muted">
+                      Tratamiento: <ToolChips tools={p.herramientas} />
                     </div>
                   </button>
                 </li>

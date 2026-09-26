@@ -6,6 +6,7 @@
 import * as THREE from 'three';
 import { DRACOLoader } from 'three/addons/loaders/DRACOLoader.js';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { etapa } from '@/theme/tokens';
 
 const draco = new DRACOLoader().setDecoderPath('/draco/');
 const gltf = new GLTFLoader().setDRACOLoader(draco);
@@ -22,7 +23,7 @@ function normalize(object: THREE.Object3D, cellSize = 1): THREE.Object3D {
   return object;
 }
 
-export function fallbackPrimitive(color = '#009E73'): THREE.Object3D {
+export function fallbackPrimitive(color = etapa.desarrollo): THREE.Object3D {
   const mesh = new THREE.Mesh(
     new THREE.CylinderGeometry(0.15, 0.25, 0.6, 6),
     new THREE.MeshLambertMaterial({ color, flatShading: true }),
@@ -44,4 +45,9 @@ export function loadAsset(url: string, onProgress?: (pct: number) => void): Prom
     });
   cache.set(url, promise);
   return promise.then((o) => o.clone());
+}
+
+/** Precarga un lote de rutas (p. ej. las etapas de un cultivo) y devuelve los modelos. */
+export function preloadAssets(urls: readonly string[]): Promise<THREE.Object3D[]> {
+  return Promise.all(urls.map((url) => loadAsset(url)));
 }

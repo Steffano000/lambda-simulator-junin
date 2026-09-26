@@ -32,7 +32,7 @@ npm run dev        # http://localhost:5173
 
 ## Flujo de uso
 
-**Terreno → Acciones → Tratamiento → Validación → Cultivos → Plantación → Estado de plantación → Contexto ambiental → Avance del tiempo**
+**Terreno → Acciones → Tratamiento → Validación → Cultivos → Plantación → Estado de plantación → Contexto ambiental → Avance del tiempo → Cosecha**
 
 1. **Terreno** (inicio obligatorio): clase de suelo, reacción (pH) y tamaño. Define la textura, las acciones posibles y los cultivos aptos.
 2. **Acciones**: solo se muestran las que corresponden al terreno y a su estado. Al pasar el cursor sobre una acción se ven sus efectos, prerrequisitos, la condición del terreno, a qué cultivo sirve y si hace falta antes de plantar.
@@ -42,6 +42,15 @@ npm run dev        # http://localhost:5173
 6. **Plantación**: se planta solo en las celdas listas; las demás no bloquean.
 7. **Paneles únicos**: _Plantaciones_ (estado, evolución, condiciones, cosecha) y _Contexto ambiental_ (escenario, clima del mes, modificadores, efectos del último avance).
 8. **Tiempo**: iconos para saltos de +1, +7, +15 y +30 días, más un control central − / N días / + / Avanzar.
+9. **Cosecha**: en el paso 4 se recolectan las celdas maduras y se abre el **informe de recolección**:
+   - Las acciones hechas en el área, con cuántas veces y en cuántas celdas se aplicaron, y en qué días.
+   - Los insumos usados: abono, cal, azufre, semilla y mano de obra. El agua se cuenta como **tiempo de riego** (horas).
+   - El gasto total, lo recuperado al vender y el balance.
+   - Qué hacer con el suelo: **dejarlo descansar** los días que pide el cultivo (barbecho) o **rotar** a un cultivo de otra familia que pida menos nitrógeno. Las leguminosas, como la haba, van primero.
+
+   La cosecha se lleva nitrógeno del suelo (la haba lo aporta) y el descanso lo recupera día a día. Las dosis y los precios son supuestos editables en `src/domain/economy/insumos.ts`.
+
+Al seleccionar una celda se abren dos paneles: uno de la **celda** (suelo, surcos, agua y química) y otro del **cultivo** (miniatura 3D, etapa, salud, agua para el cultivo, estrés de hoy y rendimiento estimado).
 
 ### Clima: escenarios y sandbox
 
@@ -85,7 +94,7 @@ Arquitectura **MVC** en capas unidireccionales. Cada módulo de `src/domain` cor
 
 ```
 Lambda-simulator/
-├── data/                     JSON canónicos (cultivos, clima, terrenos, meta). Nunca se reescriben
+├── data/                     JSON canónicos (cultivos, clima, terrenos, mezclas de suelos, meta). Nunca se reescriben
 ├── docs/                     Especificación: README, spec, design y pasos 01 → 10
 ├── public/
 │   ├── models/crops/         .glb de cultivos por etapa (EP-01.2)
@@ -107,7 +116,7 @@ Lambda-simulator/
 │   │   ├── simulation/       04       SimulationClock (balance hídrico diario, salud, etapas)
 │   │   ├── stress/           06       Fuentes de estrés (Strategy) y HealthModel (CHI)
 │   │   ├── plantation/       04 · 06  PlantationService (resumen, evolución, condiciones)
-│   │   ├── terrain/          01 · 07  TerrainProfile, TerrainFactory (+ contratos procedurales)
+│   │   ├── terrain/          01 · 07  TerrainProfile, TerrainFactory, SoilMix + reparto por manchas (+ contratos procedurales)
 │   │   ├── presets/          08       Registry de casos A/B/C
 │   │   ├── sandbox/          09       Experimentos, editor, FreezeTerrain
 │   │   └── persistence/      10       Codecs compacto/RLE/gzip

@@ -2,11 +2,27 @@
  * Plantaciones: un grupo de celdas sembradas con el mismo cultivo en el mismo día.
  * Resume su estado, registra su evolución y explica qué condiciones la afectan.
  */
-import type { ClimaDia } from '../climate';
 import type { Crop, EtapaVisual } from '../crops';
 import type { TileNode } from '../grid';
+import { efectoEnCultivo, estadoHidrico, type EfectoHidrico } from '../hydrology';
 import { chiEstado, type ChiEstado, type HealthModel, type StressEffect } from '../stress';
-import type { Textura } from '../terrain';
+
+/** Clima de hoy que necesitan las condiciones de la plantación. */
+export interface ClimaHoy {
+  tmed: number;
+  tmin: number;
+  /** mm/día */
+  et0: number;
+  /** Lluvia de hoy (mm); 0 si no llueve */
+  lluviaMm: number;
+}
+
+const ETIQUETA_EFECTO: Record<EfectoHidrico, string> = {
+  deficit: 'con déficit',
+  adecuado: 'adecuadas',
+  exceso: 'con exceso',
+  encharcado: 'encharcadas',
+};
 
 export interface PuntoHistorial {
   dia: number;
@@ -105,29 +121,55 @@ export class PlantationService {
     return { ...p, historial };
   }
 
-  /** Condiciones actuales (positivas y negativas) según el clima del día y el estado medio. */
+  /**
+   * Condiciones actuales (positivas y negativas): estrés del día según el agua de las celdas
+   * y el clima de hoy, y reparto de la hidratación (déficit / adecuada / exceso / encharcada).
+   */
   condiciones(
     p: Plantacion,
     tiles: ReadonlyMap<string, TileNode>,
     crop: Crop,
-    clima: ClimaDia,
-    textura: Textura,
+    clima: ClimaHoy,
+    saturacionPct: number,
   ): Condicion[] {
     const activas = this.activas(p, tiles).filter((t) => t.salud > 0);
     if (activas.length === 0) return [];
+
+    const conteo: Record<EfectoHidrico, number> = { deficit: 0, adecuado: 0, exceso: 0, encharcado: 0 };
+    for (const t of activas) {
+      const estado = estadoHidrico(t.humedad, t.aguaSuperficie, saturacionPct);
+      conteo[efectoEnCultivo(estado, t.humedad, crop.umbralHumedad)]++;
+    }
     const humedad = media(activas.map((t) => t.humedad));
+    const encharcado = conteo.encharcado > activas.length / 2;
     const efectos: StressEffect[] = this.health.efectos(
-      { tmed: clima.tmed, tmin: clima.tmin, humedad, umbralHumedad: crop.umbralHumedad, textura },
+      {
+        tmed: clima.tmed,
+        tmin: clima.tmin,
+        humedad,
+        umbralHumedad: crop.umbralHumedad,
+        encharcado,
+        diasEncharcado: Math.max(...activas.map((t) => t.diasEncharcado)),
+      },
       crop.datos,
     );
     const out: Condicion[] = efectos.map((e) => ({ tipo: 'riesgo', texto: e.descripcion }));
 
-    const diasMedios = Math.round(media(activas.map((t) => t.diasCultivo)));
-    const etc = crop.kc(diasMedios) * clima.et0;
-    const balance = clima.lluvia - etc;
+    const partes = (Object.keys(conteo) as EfectoHidrico[])
+      .filter((k) => conteo[k] > 0)
+      .map((k) => `${conteo[k]} ${ETIQUETA_EFECTO[k]}`);
     out.push({
-      tipo: balance >= 0 ? 'favorable' : 'riesgo',
-      texto: `Consumo ETc ${etc.toFixed(1)} mm/día (Kc ${crop.kc(diasMedios).toFixed(2)}) vs lluvia ${clima.lluvia.toFixed(1)} mm/día.`,
+      tipo: conteo.adecuado === activas.length ? 'favorable' : 'riesgo',
+      texto: `Hidratación de las celdas: ${partes.join(' · ')} (óptimo ≥ ${crop.umbralHumedad} %).`,
+    });
+
+    const diasMedios = media(activas.map((t) => t.diasCultivo));
+    const etc = crop.kc(diasMedios) * clima.et0;
+    out.push({
+      tipo: clima.lluviaMm >= etc ? 'favorable' : 'neutral',
+      texto: clima.lluviaMm
+        ? `Hoy llueven ${clima.lluviaMm} mm frente a un consumo ETc de ${etc.toFixed(1)} mm (Kc ${crop.kc(diasMedios).toFixed(2)}).`
+        : `Sin lluvia hoy: el cultivo consume ${etc.toFixed(1)} mm/día (Kc ${crop.kc(diasMedios).toFixed(2)}) del suelo.`,
     });
 
     if (clima.tmed < crop.datos.t_opt_min) {

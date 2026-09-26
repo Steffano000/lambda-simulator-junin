@@ -6,6 +6,7 @@ import { container } from '@/app/container';
 import type { ValidacionSiembra } from '@/domain/actions';
 import { useControllers } from '@/controllers/hooks';
 import { IconAlert, IconCheck } from '../components/icons';
+import { ToolChips } from '../icons/ToolChip';
 import { Section } from '../panels/Section';
 
 export function ValidationReport({ validacion: v }: { validacion: ValidacionSiembra }) {
@@ -41,10 +42,8 @@ export function ValidationReport({ validacion: v }: { validacion: ValidacionSiem
               <span className="flex-1">
                 <span className="text-ui-ink">{r.condicion}</span>
                 {p && (
-                  <span className="text-ui-ink-muted">
-                    {' '}
-                    — faltan {p.tileIds.length} celda(s) ·{' '}
-                    {p.herramientas.map((h) => container.commands.create(h).etiqueta).join(' o ')}
+                  <span className="mt-0.5 flex flex-wrap items-center gap-1 text-ui-ink-muted">
+                    faltan {p.tileIds.length} celda(s) · <ToolChips tools={p.herramientas} />
                   </span>
                 )}
               </span>

@@ -19,23 +19,45 @@ export interface SoilState {
 /** Paso 02 · Máquina de estados de la celda: Baldío → Arado → Sembrado → Maduro → Cosechado. */
 export type CellLifecycle = 'baldio' | 'arado' | 'sembrado' | 'maduro' | 'cosechado';
 
+/** Orientación de los surcos: a lo largo de las columnas (X) o de las filas (Z). */
+export type OrientacionSurco = 'x' | 'z';
+
 export interface TileNode {
   id: string;
   coords: Coords;
   /** Altura del bloque (eje Y, en cubos de 1 m). 0 = planicie; funcional desde el paso 07. */
   elevacion: number;
   suelo: SoilState;
-  /** Humedad 0–100 % (0 = PMP, 100 = CC) */
+  /**
+   * Humedad en % del agua útil: 0 = PMP, 100 = CC. Puede superar 100 (agua gravitacional)
+   * hasta el nivel de saturación del suelo.
+   */
   humedad: number;
+  /** Agua libre sobre la celda (mm): en surcos o como charco */
+  aguaSuperficie: number;
+  /** Surcos del arado y su orientación; null si la celda no está surcada */
+  surcos: OrientacionSurco | null;
+  /** Días consecutivos encharcada (el daño a raíces crece mientras persiste) */
+  diasEncharcado: number;
   /** `nombre` de data/cultivos.json o null */
   vegetacionId: string | null;
   estado: CellLifecycle;
-  /** Días transcurridos desde la siembra */
+  /** Días de desarrollo del cultivo (fraccionarios: el estrés hídrico lo ralentiza) */
   diasCultivo: number;
   /** Celda ocupada por un canal de riego */
   canal: boolean;
   /** Índice de salud del cultivo (CHI) 0–100; 100 sin cultivo */
   salud: number;
+  /** Día simulado hasta el que el suelo descansa (barbecho); null si no descansa */
+  descansoHasta: number | null;
 }
 
 export const tileId = (x: number, z: number): string => `${x}:${z}`;
+
+/** Campos por defecto de una celda nueva (agua libre, surcos, encharcamiento y descanso). */
+export const AGUA_INICIAL = {
+  aguaSuperficie: 0,
+  surcos: null,
+  diasEncharcado: 0,
+  descansoHasta: null,
+} as const;

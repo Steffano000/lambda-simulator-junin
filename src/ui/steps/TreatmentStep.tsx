@@ -4,15 +4,23 @@
  */
 import { container } from '@/app/container';
 import { useControllers, useDisponibles, useNecesidades } from '@/controllers/hooks';
+import type { OrientacionSurco } from '@/domain/grid';
 import { useSimStore } from '@/store/useSimStore';
 import { Section } from '../panels/Section';
 import { ActionCard } from './ActionCard';
 import { CorrectionBanner } from './CorrectionBanner';
 
+/** Surcos a lo largo de las columnas (X, este–oeste) o de las filas (Z, norte–sur). */
+const DIRECCIONES: { id: OrientacionSurco; label: string; flecha: string }[] = [
+  { id: 'x', label: 'Este–Oeste', flecha: '↔' },
+  { id: 'z', label: 'Norte–Sur', flecha: '↕' },
+];
+
 export function TreatmentStep() {
   const { terrain, treatment, planting, selection } = useControllers();
   const terreno = useSimStore((s) => s.terreno);
   const herramienta = useSimStore((s) => s.herramienta);
+  const direccion = useSimStore((s) => s.direccionArado);
   const seleccion = useSimStore((s) => s.seleccion);
   const correccion = useSimStore((s) => s.correccion);
   const hayTratadas = useSimStore((s) => s.tiles.some((t) => t.estado === 'arado'));
@@ -72,6 +80,27 @@ export function TreatmentStep() {
             </button>
           )}
         </div>
+        {herramienta === 'arar' && (
+          <div role="radiogroup" aria-label="Dirección de los surcos" className="mb-2">
+            <p className="mb-1 text-2xs font-medium text-ui-ink">Dirección de los surcos</p>
+            <div className="grid grid-cols-2 gap-1">
+              {DIRECCIONES.map((d) => (
+                <button
+                  key={d.id}
+                  role="radio"
+                  aria-checked={direccion === d.id}
+                  className={`btn justify-center ${direccion === d.id ? 'btn-active' : ''}`}
+                  onClick={() => treatment.setDireccionArado(d.id)}
+                >
+                  <span aria-hidden className="text-sm">
+                    {d.flecha}
+                  </span>
+                  {d.label}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
         {activa && seleccion.length > 0 && (
           <p className="mb-2 text-2xs text-ui-ink-muted">
             {activa.command.etiqueta} aplica en <span className="value text-ui-ink">{aplicables}</span> de{' '}

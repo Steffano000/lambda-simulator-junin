@@ -1,18 +1,23 @@
 /**
- * Terreno: perfil elegido al inicio del flujo + (paso 07) topografía procedural.
- * Ver docs/07-topografia-procedural.md.
- *
- * TODO(paso-07): NoiseStrategy (Simplex/Perlin), clasificador y TerrainGenerator.
+ * Terreno: perfil elegido al inicio del flujo + reparto procedural de la mezcla de
+ * suelos (paso 07). Ver docs/07-topografia-procedural.md.
  */
+export { PH_BASE, REACCION_ETIQUETA, TerrainProfile, type ReaccionPh } from './TerrainProfile';
+export { TEXTURA_ETIQUETA, texturaDe, type Textura } from './textura';
+export { SoilMix, TOTAL_PORCENTAJE, normalizarPorcentajes, type ParteMezcla } from './soilMix';
 export {
-  PH_BASE,
-  REACCION_ETIQUETA,
-  TEXTURA_ETIQUETA,
-  TerrainProfile,
-  texturaDe,
-  type ReaccionPh,
-  type Textura,
-} from './TerrainProfile';
+  DISTRIBUCIONES,
+  DISTRIBUCION_POR_DEFECTO,
+  POR_ALEATORIO,
+  POR_MANCHAS,
+  builders as distribuciones,
+  celdasAisladas,
+  repartirSuelos,
+  repartoReal,
+  type ClaveDistribucion,
+  type DistribucionSuelos,
+  type RepartoSuelos,
+} from './soilDistribution';
 export { TerrainFactory, type TerrainOptions } from './TerrainFactory';
 
 export type PisoEcologico = 'yunga' | 'quechua' | 'suni' | 'puna';

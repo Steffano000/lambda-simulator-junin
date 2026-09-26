@@ -10,6 +10,7 @@ import type { Cultivo } from '@/data/types';
 export { chiEstado, HealthModel, type ChiEstado, type DiaSalud } from './HealthModel';
 export {
   AnegamientoStress,
+  ExcesoStress,
   DEFAULT_SOURCES,
   HeladaStress,
   HidricoStress,

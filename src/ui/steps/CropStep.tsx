@@ -7,7 +7,9 @@ import { useControllers, useMesActual, useValidacion } from '@/controllers/hooks
 import { MESES } from '@/domain/crops';
 import { useSimStore } from '@/store/useSimStore';
 import { IconBack } from '../components/icons';
+import { CropIcon } from '../icons/CropIcon';
 import { Section } from '../panels/Section';
+import { CropGrowthPreview } from './CropGrowthPreview';
 import { ValidationReport } from './ValidationReport';
 
 export function CropStep() {
@@ -54,7 +56,10 @@ export function CropStep() {
                   }`}
                 >
                   <div className="flex items-center justify-between gap-2">
-                    <span className="text-xs font-medium">{crop.nombre}</span>
+                    <span className="flex items-center gap-1.5 text-xs font-medium">
+                      <CropIcon nombre={crop.nombre} className="text-base" />
+                      {crop.nombre}
+                    </span>
                     {bloqueado ? (
                       <span className="rounded bg-chi-estresado/15 px-1.5 text-2xs text-ui-ink-muted">
                         Siembra en {MESES[crop.datos.mes_siembra - 1]}
@@ -90,6 +95,7 @@ export function CropStep() {
         )}
       </Section>
 
+      {cultivo && <CropGrowthPreview cultivo={cultivo} />}
       {cultivo && validacion && <ValidationReport validacion={validacion} />}
 
       <Section titulo="Volver">

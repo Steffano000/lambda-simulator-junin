@@ -4,7 +4,7 @@
  */
 import { createRng } from '../shared/random';
 import type { GridConfig } from './GridConfig';
-import { tileId, type TileNode } from './TileNode';
+import { AGUA_INICIAL, tileId, type TileNode } from './TileNode';
 
 export function createGrid(config: GridConfig, soilClasses: readonly string[]): TileNode[] {
   const rng = createRng(config.seed);
@@ -29,6 +29,7 @@ export function createGrid(config: GridConfig, soilClasses: readonly string[]): 
         diasCultivo: 0,
         canal: false,
         salud: 100,
+        ...AGUA_INICIAL,
       });
     }
   }

@@ -5,8 +5,9 @@
  */
 import { useState } from 'react';
 import { createPortal } from 'react-dom';
-import type { TileCommand } from '@/domain/actions';
+import type { TileCommand, ToolId } from '@/domain/actions';
 import type { Crop } from '@/domain/crops';
+import { CropIcon, ToolIcon } from '../icons/CropIcon';
 
 interface Props {
   command: TileCommand;
@@ -25,6 +26,7 @@ export function ActionCard({ command, activa, aplicables, sirvePara, necesariaPa
   const mostrar = (el: HTMLElement) => setAncla(el.getBoundingClientRect());
   const ocultar = () => setAncla(null);
   const fichaId = `ficha-${command.id}`;
+  const tool = command.id as ToolId;
 
   return (
     <>
@@ -40,16 +42,30 @@ export function ActionCard({ command, activa, aplicables, sirvePara, necesariaPa
         onFocus={(e) => mostrar(e.currentTarget)}
         onBlur={ocultar}
       >
-        <div className="flex items-center justify-between gap-2">
-          <span className="text-xs font-medium">{command.etiqueta}</span>
-          <span className="value text-2xs text-ui-ink-muted">{aplicables} celdas</span>
+        <div className="flex gap-2.5">
+          <span
+            className={`flex size-8 shrink-0 items-center justify-center rounded-md text-lg ${
+              activa ? 'bg-ui-accent text-ui-accent-ink' : 'bg-ui-panel-2 text-ui-ink'
+            }`}
+          >
+            <ToolIcon tool={tool} />
+          </span>
+          <span className="min-w-0 flex-1">
+            <span className="flex items-center justify-between gap-2">
+              <span className="text-xs font-medium">{command.etiqueta}</span>
+              <span className="value text-2xs text-ui-ink-muted">{aplicables} celdas</span>
+            </span>
+            <span className="mt-0.5 block text-2xs text-ui-ink-muted">{command.efectos[0]}</span>
+            {necesariaPara.length > 0 && (
+              <span className="mt-1 flex flex-wrap items-center gap-1 text-2xs font-medium text-etapa-final">
+                Necesaria para
+                {necesariaPara.map((c) => (
+                  <CropIcon key={c} nombre={c} title={c} className="text-sm" />
+                ))}
+              </span>
+            )}
+          </span>
         </div>
-        <div className="mt-0.5 text-2xs text-ui-ink-muted">{command.efectos[0]}</div>
-        {necesariaPara.length > 0 && (
-          <div className="mt-1 text-2xs font-medium text-etapa-final">
-            Necesaria para {necesariaPara.join(', ')}
-          </div>
-        )}
       </button>
 
       {ancla &&
@@ -60,21 +76,32 @@ export function ActionCard({ command, activa, aplicables, sirvePara, necesariaPa
             className="panel fixed z-modal w-72 animate-panel-in p-3 text-2xs"
             style={{ left: ancla.right + 8, top: Math.min(ancla.top, window.innerHeight - 320) }}
           >
-            <h3 className="mb-1 text-xs font-semibold text-ui-ink">{command.etiqueta}</h3>
+            <h3 className="mb-1 flex items-center gap-1.5 text-xs font-semibold text-ui-ink">
+              <ToolIcon tool={tool} className="text-base" /> {command.etiqueta}
+            </h3>
             <p className="mb-2 text-ui-ink-muted">{command.descripcion}</p>
             <Lista titulo="Efectos" items={command.efectos} />
             <Lista titulo="Prerrequisitos de la celda" items={command.prerrequisitos} />
             {command.condicionTerreno && (
               <Lista titulo="Condición del terreno" items={[command.condicionTerreno]} />
             )}
-            <Lista
-              titulo="Sirve para"
-              items={
-                sirvePara.length
-                  ? sirvePara.map((c) => `${c.nombre}: ${requisitosResueltos(command, c)}`)
-                  : ['Manejo general del terreno (no es requisito de siembra)']
-              }
-            />
+            <div className="mb-2">
+              <div className="font-semibold text-ui-ink">Sirve para</div>
+              {sirvePara.length ? (
+                <ul className="mt-0.5 space-y-0.5 text-ui-ink-muted">
+                  {sirvePara.map((c) => (
+                    <li key={c.nombre} className="flex items-start gap-1.5">
+                      <CropIcon nombre={c.nombre} className="mt-0.5 shrink-0 text-sm" />
+                      <span>
+                        <span className="text-ui-ink">{c.nombre}</span>: {requisitosResueltos(command, c)}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="text-ui-ink-muted">Manejo general del terreno (no es requisito de siembra).</p>
+              )}
+            </div>
             {necesariaPara.length > 0 && (
               <Lista
                 titulo="Antes de plantar"

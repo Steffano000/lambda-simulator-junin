@@ -24,8 +24,8 @@ export class TimeController extends BaseController {
       diaInicial: s.dia,
       mesInicio: s.mesInicio,
       escenario: this.escenario(),
-      textura: s.terreno.textura,
-      soilOf: this.deps.soilOf,
+      seed: s.terreno.config.seed,
+      hidraulica: this.deps.hidraulica,
     });
     const dia = s.dia + dias;
     const porId = this.tilesById(tiles);
@@ -34,6 +34,10 @@ export class TimeController extends BaseController {
     this.set({ tiles, dia, plantaciones, ultimoAvance: resumen });
 
     const detalle: string[] = [];
+    if (resumen.eventos.length) {
+      detalle.push(`${resumen.eventos.length} día(s) de lluvia: ${resumen.lluviaMm.toFixed(0)} mm en total.`);
+    }
+    if (resumen.estados.encharcado) detalle.push(`${resumen.estados.encharcado} celda(s) encharcadas.`);
     if (resumen.nuevasMaduras) detalle.push(`${resumen.nuevasMaduras} celda(s) llegaron a la etapa Final.`);
     if (resumen.nuevasMuertas) detalle.push(`${resumen.nuevasMuertas} planta(s) murieron.`);
     this.notify(resumen.nuevasMuertas ? 'error' : 'ok', `+${dias} días → día ${dia}.`, detalle);

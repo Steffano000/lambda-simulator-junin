@@ -5,6 +5,7 @@
 import type { ToolId, ValidacionSiembra } from '@/domain/actions';
 import type { Crop } from '@/domain/crops';
 import type { TileNode } from '@/domain/grid';
+import type { ClimaHoy, DetalleCultivo } from '@/domain/plantation';
 import { BaseController } from './BaseController';
 
 export class PlantingController extends BaseController {
@@ -21,6 +22,22 @@ export class PlantingController extends BaseController {
 
   selectCrop(cultivo: string | null): void {
     this.set({ cultivo });
+  }
+
+  /** Detalle del cultivo de una celda (null si la celda no tiene cultivo). */
+  detalleCultivo(tile: TileNode, hoy: ClimaHoy): DetalleCultivo | null {
+    const crop = this.deps.crops.find(tile.vegetacionId);
+    if (!crop) return null;
+    const s = this.state;
+    const plantacion =
+      s.plantaciones.find((p) => p.cultivo === crop.nombre && p.tileIds.includes(tile.id)) ?? null;
+    const saturacion = this.deps.hidraulica(tile.suelo.clase)?.saturacionPct ?? 100;
+    return this.deps.cropInspector.detalle(tile, crop, hoy, saturacion, plantacion, s.dia);
+  }
+
+  /** Muestra u oculta la vista previa del cultivo sobre las celdas listas. */
+  togglePrevia(): void {
+    this.set({ previaCultivo: !this.state.previaCultivo });
   }
 
   /** Celdas candidatas a sembrar: la selección o, sin selección, las celdas tratadas (aradas). */
@@ -55,6 +72,7 @@ export class PlantingController extends BaseController {
       seleccion: [],
       correccion: null,
     });
+    this.registrar('sembrar', r.aplicadas, s.cultivo);
     const faltan = v.aCorregir.length
       ? [`${v.aCorregir.length} celda(s) requieren tratamiento antes de sembrar.`]
       : [];
@@ -101,28 +119,6 @@ export class PlantingController extends BaseController {
     this.set({ correccion: null });
   }
 
-  harvest(plantacionId: string): void {
-    const s = this.state;
-    const p = s.plantaciones.find((x) => x.id === plantacionId);
-    if (!p) return;
-    const maduras = this.deps.plantations
-      .activas(p, this.tilesById())
-      .filter((t) => t.estado === 'maduro' && t.salud > 0)
-      .map((t) => t.id);
-    if (!maduras.length) return this.notify('error', `La plantación ${p.id} aún no tiene celdas maduras.`);
-
-    const r = this.deps.actions.executeMany('cosechar', maduras, s.tiles, this.context());
-    const kg = r.cosechas.reduce((acc, c) => acc + c.kg, 0);
-    this.set({
-      tiles: r.tiles,
-      cosechas: [...r.cosechas, ...s.cosechas],
-      plantaciones: s.plantaciones.map((x) =>
-        x.id === p.id ? { ...x, cosechadoKg: x.cosechadoKg + kg } : x,
-      ),
-    });
-    this.notify('ok', `Cosecha de ${p.cultivo}: ${kg.toFixed(2)} kg en ${r.aplicadas.length} celda(s).`);
-  }
-
   remove(plantacionId: string): void {
     const s = this.state;
     const p = s.plantaciones.find((x) => x.id === plantacionId);
@@ -130,6 +126,7 @@ export class PlantingController extends BaseController {
     const ids = this.deps.plantations.activas(p, this.tilesById()).map((t) => t.id);
     const r = this.deps.actions.executeMany('remover', ids, s.tiles, this.context());
     this.set({ tiles: r.tiles });
+    this.registrar('remover', r.aplicadas, p.cultivo);
     this.notify('ok', `Plantación ${p.id} removida (${r.aplicadas.length} celdas quedan baldías).`);
   }
 

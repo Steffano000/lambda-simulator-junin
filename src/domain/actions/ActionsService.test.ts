@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import { ClimateRepository, CropRepository, SoilRepository } from '@/data';
+import { ClimateRepository, CropRepository, SoilMixRepository, SoilRepository } from '@/data';
 import { CropFactory } from '../crops';
 import type { TileNode } from '../grid';
+import { SoilHydraulics } from '../hydrology';
 import { TerrainFactory } from '../terrain';
 import { ActionsService } from './ActionsService';
 import { CommandFactory, TOOL_IDS } from './CommandFactory';
@@ -9,7 +10,7 @@ import { PlantingValidator } from './PlantingValidator';
 import type { ActionContext } from './TileCommand';
 
 const crops = new CropFactory(CropRepository.all());
-const terrains = new TerrainFactory(SoilRepository.all());
+const terrains = new TerrainFactory(SoilRepository.all(), SoilMixRepository.all());
 const papa = crops.create('Papa');
 const clima = ClimateRepository.byName('Normal 2001-02')!;
 const service = new ActionsService();
@@ -22,11 +23,26 @@ const ctx = (over: Partial<ActionContext> = {}): ActionContext => ({
   clima: clima[9],
   cropOf: (n) => crops.find(n),
   soilOf: SoilRepository.byClass,
+  hidraulica: (clase) => {
+    const suelo = SoilRepository.byClass(clase);
+    return suelo ? SoilHydraulics.of(suelo) : undefined;
+  },
+  direccionArado: 'x',
   ...over,
 });
 
+/** Perfil de una sola clase: parcela homogénea para pruebas deterministas. */
 const perfil = (clase = 'Franco', reaccion: 'acido' | 'neutro' | 'alcalino' = 'neutro') =>
-  terrains.createProfile({ clase, reaccion, tamano: 'demo' });
+  terrains.createProfile({
+    mezcla: {
+      id: 'homogenea',
+      nombre: 'Homogénea',
+      descripcion: `${clase} al 100 %`,
+      porcentajes: { [clase]: 100 },
+    },
+    reaccion,
+    tamano: 'demo',
+  });
 
 /** Parcela 10×10 homogénea para pruebas deterministas. */
 const grid = (suelo: Partial<TileNode['suelo']> = {}, humedad = 80): TileNode[] =>
@@ -42,7 +58,7 @@ describe('CommandFactory', () => {
   it('crea un comando por herramienta, lo reutiliza y separa por categoría', () => {
     const factory = new CommandFactory();
     for (const id of TOOL_IDS) expect(factory.create(id)).toBe(factory.create(id));
-    expect(factory.ids('plantacion')).toEqual(['sembrar', 'cosechar', 'remover']);
+    expect(factory.ids('plantacion')).toEqual(['sembrar', 'cosechar', 'remover', 'descansar']);
   });
 });
 

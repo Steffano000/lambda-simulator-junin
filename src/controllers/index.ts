@@ -2,6 +2,7 @@
 import { container } from '@/app/container';
 import { useSimStore } from '@/store/useSimStore';
 import { ClimateController } from './ClimateController';
+import { HarvestController } from './HarvestController';
 import { PlantingController } from './PlantingController';
 import { SelectionController } from './SelectionController';
 import { TerrainController } from './TerrainController';
@@ -14,6 +15,7 @@ export const controllers = {
   treatment: new TreatmentController(useSimStore, container),
   planting: new PlantingController(useSimStore, container),
   climate: new ClimateController(useSimStore, container),
+  harvest: new HarvestController(useSimStore, container),
   time: new TimeController(useSimStore, container),
 } as const;
 

@@ -1,12 +1,13 @@
 /**
- * Paso 1 · Selección del terreno (inicio obligatorio). La textura y la reacción del
- * suelo determinan acciones, requisitos y cultivos posibles; se muestran antes de confirmar.
+ * Paso 1 · Selección del terreno (inicio obligatorio). La mezcla de suelos reparte las
+ * clases por la parcela; la textura dominante y la reacción del suelo determinan
+ * acciones, requisitos y cultivos posibles. Se muestran antes de confirmar.
  */
 import { container } from '@/app/container';
 import { useControllers } from '@/controllers/hooks';
 import { MESES } from '@/domain/crops';
 import { SIZE_PRESETS, type SizePreset } from '@/domain/grid';
-import { REACCION_ETIQUETA, TEXTURA_ETIQUETA, texturaDe, type ReaccionPh } from '@/domain/terrain';
+import { REACCION_ETIQUETA, TEXTURA_ETIQUETA, SoilMix, type ReaccionPh } from '@/domain/terrain';
 import { useSimStore } from '@/store/useSimStore';
 import { soilColor } from '@/theme/ramps';
 import { ScenarioPicker } from '../climate/ScenarioPicker';
@@ -22,8 +23,10 @@ export function TerrainStep() {
   const { terrain } = useControllers();
   const opciones = useSimStore((s) => s.opcionesTerreno);
   const mesInicio = useSimStore((s) => s.mesInicio);
-  const suelo = container.soilOf(opciones.clase);
-  const textura = texturaDe(opciones.clase);
+  const mezcla = SoilMix.de(opciones.mezcla);
+  const partes = mezcla.partes();
+  const dominante = container.soilOf(mezcla.dominante);
+  const textura = mezcla.textura;
   const aptos = container.crops.all().filter((c) => c.texturaCompatible(textura));
   const noAptos = container.crops.all().filter((c) => !c.texturaCompatible(textura));
   const perfil = container.terrains.createProfile(opciones);
@@ -34,33 +37,72 @@ export function TerrainStep() {
 
   return (
     <>
-      <Section titulo="1 · Tipo de suelo">
-        <ul className="grid grid-cols-2 gap-1" role="radiogroup" aria-label="Clase de suelo">
+      <Section titulo="1 · Mezcla de suelos">
+        <div className="grid grid-cols-3 gap-1">
+          {container.terrains.mezclas.map((m) => (
+            <button
+              key={m.id}
+              className={`btn flex-col justify-center gap-0 px-1 ${m.id === mezcla.id ? 'btn-active' : ''}`}
+              aria-pressed={m.id === mezcla.id}
+              onClick={() => terrain.usarMezcla(m.id)}
+            >
+              {m.nombre}
+            </button>
+          ))}
+        </div>
+        <p className="mt-1.5 text-2xs text-ui-ink-muted">{mezcla.descripcion}</p>
+
+        {/* Reparto real de la mezcla, antes de la variación natural entre celdas */}
+        <div className="mt-2 flex h-1.5 w-full overflow-hidden rounded-full ring-1 ring-black/10">
+          {partes.map((p) => (
+            <span
+              key={p.clase}
+              className="h-full"
+              style={{ width: `${p.porcentaje}%`, backgroundColor: soilColor(p.clase) }}
+              title={`${p.clase} ${p.porcentaje}%`}
+            />
+          ))}
+        </div>
+
+        <ul className="mt-2 space-y-1.5">
           {container.terrains.clases().map((t) => {
-            const activo = t.clase === opciones.clase;
+            const valor = mezcla.porcentajeDe(t.clase);
+            const esDominante = t.clase === mezcla.dominante;
+            const ultimo = valor > 0 && partes.length === 1;
             return (
               <li key={t.clase}>
-                <button
-                  role="radio"
-                  aria-checked={activo}
-                  onClick={() => terrain.preview({ clase: t.clase })}
-                  className={`flex w-full items-center gap-2 rounded-md border px-2 py-1.5 text-left text-2xs ${
-                    activo
-                      ? 'border-ui-accent bg-ui-panel-2 font-medium'
-                      : 'border-ui-border hover:bg-ui-panel-2'
-                  }`}
-                >
+                <div className="flex items-center gap-2">
                   <span className="swatch" style={{ backgroundColor: soilColor(t.clase) }} />
-                  {t.clase}
-                </button>
+                  <label className="flex-1 truncate text-2xs" htmlFor={`slider-${t.clase}`}>
+                    {t.clase}
+                    {esDominante && <span className="ml-1 text-ui-ink-muted">· dominante</span>}
+                  </label>
+                  <span className="value w-9 text-right text-2xs text-ui-ink-muted">
+                    {valor > 0 ? `${valor}%` : '—'}
+                  </span>
+                </div>
+                <input
+                  id={`slider-${t.clase}`}
+                  className="slider mt-0.5"
+                  type="range"
+                  min={0}
+                  max={100}
+                  step={1}
+                  value={valor}
+                  disabled={ultimo}
+                  title={ultimo ? 'La parcela necesita al menos una clase de suelo' : undefined}
+                  onChange={(e) => terrain.setPorcentaje(t.clase, Number(e.target.value))}
+                />
               </li>
             );
           })}
         </ul>
-        {suelo && (
+
+        {dominante && (
           <p className="mt-2 text-2xs text-ui-ink-muted">
-            {TEXTURA_ETIQUETA[textura]} · CC {suelo.cc_media} · PMP {suelo.pmp_media} · agua útil{' '}
-            {suelo.agua_util_mm_m} mm/m
+            Domina <span className="text-ui-ink">{mezcla.dominante}</span> ({mezcla.porcentajeDominante}%) ·{' '}
+            {TEXTURA_ETIQUETA[textura]} · CC {dominante.cc_media} · PMP {dominante.pmp_media} · agua útil{' '}
+            {dominante.agua_util_mm_m} mm/m
           </p>
         )}
       </Section>
@@ -122,7 +164,7 @@ export function TerrainStep() {
       <Section titulo="Este terreno determina">
         <dl className="space-y-2 text-2xs">
           <div>
-            <dt className="font-medium text-ui-ink">Cultivos aptos por textura</dt>
+            <dt className="font-medium text-ui-ink">Cultivos aptos (textura dominante)</dt>
             <dd className="text-ui-ink-muted">{aptos.map((c) => c.nombre).join(', ') || '—'}</dd>
           </div>
           {noAptos.length > 0 && (
@@ -139,7 +181,10 @@ export function TerrainStep() {
           </div>
           <div>
             <dt className="font-medium text-ui-ink">Estado inicial</dt>
-            <dd className="text-ui-ink-muted">Todas las celdas baldías: hay que arar antes de sembrar.</dd>
+            <dd className="text-ui-ink-muted">
+              Celdas baldías con la mezcla de suelos por zonas; cada celda usa lasvariables hídricas de su
+              clase. Hay que arar antes de sembrar.
+            </dd>
           </div>
         </dl>
         <button className="btn btn-active mt-3 w-full justify-center py-2" onClick={() => terrain.confirm()}>

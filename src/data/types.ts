@@ -59,6 +59,19 @@ export interface Terreno {
   tew_mm: string;
 }
 
+/**
+ * Mezcla de suelos de la parcela (data/terrenos_mezclas.json): el reparto en porcentaje
+ * de las clases de terrenos.json. Son las variables que se modifican al generar el
+ * terreno; los valores se normalizan a 100 % al leerlos (src/domain/terrain/soilMix).
+ */
+export interface MezclaSuelos {
+  id: string;
+  nombre: string;
+  descripcion: string;
+  /** Peso relativo por clase de suelo. No tiene que sumar 100. */
+  porcentajes: Record<string, number>;
+}
+
 export interface Meta {
   nombre: string;
   origen: string;

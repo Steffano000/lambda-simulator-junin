@@ -112,3 +112,16 @@ export const IconLeaf = (p: IconProps) => (
     <path d="M5 19l8-8" />
   </Svg>
 );
+
+export const IconCloud = (p: IconProps) => (
+  <Svg {...p}>
+    <path d="M7 18h10a4 4 0 000-8 6 6 0 00-11.5 1.5A3.3 3.3 0 007 18z" />
+  </Svg>
+);
+
+export const IconRain = (p: IconProps) => (
+  <Svg {...p}>
+    <path d="M7 14h10a4 4 0 000-8 6 6 0 00-11.5 1.5A3.3 3.3 0 007 14z" />
+    <path d="M8 17l-1 3M12 17l-1 3M16 17l-1 3" />
+  </Svg>
+);

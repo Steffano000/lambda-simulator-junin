@@ -6,7 +6,8 @@
  */
 import type { ClimaMes, Terreno } from '@/data/types';
 import type { Crop, RequirementId } from '../crops';
-import type { TileNode } from '../grid';
+import type { OrientacionSurco, TileNode } from '../grid';
+import type { PropiedadesHidricas } from '../hydrology';
 import type { TerrainProfile } from '../terrain';
 
 export interface ActionContext {
@@ -22,6 +23,12 @@ export interface ActionContext {
   cropOf: (nombre: string | null) => Crop | undefined;
   /** Propiedades hidráulicas de la clase de suelo (data/terrenos.json) */
   soilOf: (clase: string) => Terreno | undefined;
+  /** Variables hídricas del suelo (absorción, retención, drenaje, saturación) */
+  hidraulica: (clase: string) => PropiedadesHidricas | undefined;
+  /** Orientación de los surcos al arar */
+  direccionArado: OrientacionSurco;
+  /** Días de barbecho para la acción "Dejar en descanso" */
+  diasDescanso?: number;
 }
 
 export interface Cosecha {

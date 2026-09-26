@@ -1,5 +1,15 @@
 import type { Config } from 'tailwindcss';
-import { chi, chiEstado, divergente, etapa, humedad, serie, soil, surface } from './src/theme/tokens';
+import {
+  chi,
+  chiEstado,
+  divergente,
+  etapa,
+  hidratacion,
+  humedad,
+  serie,
+  soil,
+  surface,
+} from './src/theme/tokens';
 
 /**
  * Tailwind v4 — cargado desde src/styles/index.css con `@config`.
@@ -36,6 +46,7 @@ export default {
         div: divergente,
         etapa,
         serie,
+        hidratacion,
       },
       fontFamily: {
         sans: ['Inter', 'system-ui', '-apple-system', 'Segoe UI', 'Roboto', 'sans-serif'],

@@ -92,4 +92,9 @@
   .swatch {
     @apply inline-block size-3 shrink-0 rounded-sm ring-1 ring-black/10;
   }
+
+  /* Sliders de porcentajes (mezcla de suelos) */
+  .slider {
+    @apply h-1 w-full cursor-pointer appearance-none rounded-full bg-ui-panel-2 accent-ui-accent;
+  }
 }

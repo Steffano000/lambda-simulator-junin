@@ -5,7 +5,7 @@ import type { GridConfig, TileNode } from '@/domain/grid';
 import type { TerrainOptions, TerrainProfile } from '@/domain/terrain';
 
 /** Overlays temáticos sobre la cara superior */
-export type Overlay = 'suelo' | 'humedad' | 'ph' | 'salud';
+export type Overlay = 'suelo' | 'humedad' | 'hidratacion' | 'ph' | 'salud';
 
 export interface GridSlice {
   /** Terreno confirmado; `null` mientras se elige (fase "terreno") */
@@ -19,9 +19,9 @@ export interface GridSlice {
   overlay: Overlay;
 }
 
-/** Suelo de referencia de la parcela en data/terrenos.json (Saxton y Rawls). */
+/** Mezcla inicial: el primer preset de data/terrenos_mezclas.json (Valle de altiplano). */
 export const OPCIONES_INICIALES: TerrainOptions = {
-  clase: 'Franco arcilloso',
+  mezcla: container.terrains.mezclaPorDefecto().datos,
   reaccion: 'neutro',
   tamano: 'demo',
 };

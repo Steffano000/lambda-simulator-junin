@@ -5,8 +5,28 @@
 import { useMemo } from 'react';
 import { container } from '@/app/container';
 import type { ToolId, ToolInfo, ValidacionSiembra } from '@/domain/actions';
-import { EnvironmentModel, type ClimaDia, type ClimateScenario, type Modificador } from '@/domain/climate';
+import {
+  ETIQUETA_CIELO,
+  EnvironmentModel,
+  WeatherGenerator,
+  cieloDe,
+  type ClimaDelDia,
+  type ClimaDia,
+  type ClimateScenario,
+  type EstadoCieloVisual,
+  type Modificador,
+} from '@/domain/climate';
 import type { ClimaMes } from '@/data/types';
+import {
+  ESTADOS_HIDRICOS,
+  efectoEnCultivo,
+  estadoHidrico,
+  tieneSurcos,
+  type EfectoHidrico,
+  type EstadoHidrico,
+} from '@/domain/hydrology';
+import type { TileNode } from '@/domain/grid';
+import type { DetalleCultivo } from '@/domain/plantation';
 import { useSimStore } from '@/store/useSimStore';
 import { controllers } from './index';
 
@@ -120,4 +140,93 @@ export function useResaltadas(): ReadonlySet<string> {
     return new Set<string>();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [fase, correccion, cultivo, tiles, seleccion, terreno, escenario, mes]);
+}
+
+/**
+ * Clima de HOY (día simulado actual): validación de lluvia, nubes, intensidad y duración.
+ * Determinista por semilla del terreno y día; la lluvia de hoy entra al terreno al avanzar.
+ */
+export function useClimaHoy(): ClimaDelDia {
+  const escenario = useSimStore((s) => s.escenario);
+  const personalizados = useSimStore((s) => s.personalizados);
+  const mesInicio = useSimStore((s) => s.mesInicio);
+  const dia = useSimStore((s) => s.dia);
+  const seed = useSimStore((s) => s.terreno?.config.seed ?? s.config.seed);
+  return useMemo(
+    () => WeatherGenerator.generar(container.scenarios.create(escenario), mesInicio, dia, seed),
+    // `personalizados`: un escenario editado conserva su nombre pero cambia sus datos
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [escenario, mesInicio, dia, seed, personalizados],
+  );
+}
+
+/**
+ * Estado visual del cielo de HOY: el que pinta el fondo de la escena y su etiqueta en el
+ * panel de ambiente. Deriva de `useClimaHoy`, así que no puede desincronizarse del clima.
+ */
+export function useCieloVisual(): { estado: EstadoCieloVisual; etiqueta: string } {
+  const clima = useClimaHoy();
+  return useMemo(() => {
+    const estado = cieloDe(clima);
+    return { estado, etiqueta: ETIQUETA_CIELO[estado] };
+  }, [clima]);
+}
+
+export interface ResumenHidrico {
+  /** Celdas de suelo por estado de hidratación */
+  estados: Record<EstadoHidrico, number>;
+  total: number;
+  /** Agua libre total en surcos y charcos (L, 1 mm = 1 L/m²) */
+  aguaSuperficieL: number;
+  celdasConSurcos: number;
+  /** Celdas con cultivo vivo según el efecto del agua */
+  plantas: Record<EfectoHidrico, number>;
+  saturacionPct: number | null;
+}
+
+/** Estado hídrico actual del terreno y su efecto sobre los cultivos. */
+export function useResumenHidrico(): ResumenHidrico {
+  const tiles = useSimStore((s) => s.tiles);
+  return useMemo(() => {
+    const estados = Object.fromEntries(ESTADOS_HIDRICOS.map((e) => [e, 0])) as Record<EstadoHidrico, number>;
+    const plantas: Record<EfectoHidrico, number> = { deficit: 0, adecuado: 0, exceso: 0, encharcado: 0 };
+    let total = 0;
+    let aguaSuperficieL = 0;
+    let celdasConSurcos = 0;
+    let saturacionPct: number | null = null;
+    for (const t of tiles) {
+      const props = t.canal ? undefined : container.hidraulica(t.suelo.clase);
+      if (!props) continue;
+      saturacionPct = props.saturacionPct;
+      const estado = estadoHidrico(t.humedad, t.aguaSuperficie, props.saturacionPct);
+      estados[estado]++;
+      total++;
+      aguaSuperficieL += t.aguaSuperficie;
+      if (tieneSurcos(t)) celdasConSurcos++;
+      const crop = t.salud > 0 ? container.crops.find(t.vegetacionId) : undefined;
+      if (crop) plantas[efectoEnCultivo(estado, t.humedad, crop.umbralHumedad)]++;
+    }
+    return { estados, total, aguaSuperficieL, celdasConSurcos, plantas, saturacionPct };
+  }, [tiles]);
+}
+
+/** Detalle del cultivo de una celda con el clima de hoy (null si no hay cultivo). */
+export function useDetalleCultivo(tile: TileNode | null): DetalleCultivo | null {
+  const hoy = useClimaHoy();
+  const dia = useSimStore((s) => s.dia);
+  const plantaciones = useSimStore((s) => s.plantaciones);
+  return useMemo(
+    () =>
+      tile
+        ? controllers.planting.detalleCultivo(tile, {
+            tmed: hoy.tmed,
+            tmin: hoy.tmin,
+            et0: hoy.et0,
+            lluviaMm: hoy.lluvia?.mm ?? 0,
+          })
+        : null,
+    // `dia` y `plantaciones`: el controlador los lee del estado vigente
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [tile, hoy, dia, plantaciones],
+  );
 }

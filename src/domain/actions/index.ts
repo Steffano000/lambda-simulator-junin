@@ -12,7 +12,8 @@ export {
   type ToolInfo,
 } from './ActionsService';
 export { CommandFactory, TOOL_IDS, type ToolId } from './CommandFactory';
-export { ABONOS, CANAL, DRENAJE, ENMIENDAS, RIEGO } from './commands/tratamientos';
+export { ABONOS, ENMIENDAS } from './commands/tratamientos';
+export { CANAL, DRENAJE, INUNDACION, RIEGO } from './commands/riego';
 export { PlantingValidator, type Pendiente, type ValidacionSiembra } from './PlantingValidator';
 export { TileCommand, type ActionContext, type CategoriaAccion, type Cosecha } from './TileCommand';
 export type { CellLifecycle } from '../grid';

@@ -8,6 +8,7 @@ import { Toolbar } from '../components/Toolbar';
 import { EnvironmentPanel } from '../panels/EnvironmentPanel';
 import { PlantationPanel } from '../panels/PlantationPanel';
 import { CropStep } from '../steps/CropStep';
+import { HarvestStep } from '../steps/HarvestStep';
 import { TerrainStep } from '../steps/TerrainStep';
 import { TreatmentStep } from '../steps/TreatmentStep';
 
@@ -15,6 +16,7 @@ const PASOS = {
   terreno: TerrainStep,
   tratamiento: TreatmentStep,
   cultivos: CropStep,
+  cosecha: HarvestStep,
 } as const;
 
 export function AppShell({ children }: { children: ReactNode }) {

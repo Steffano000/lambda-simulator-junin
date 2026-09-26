@@ -1,4 +1,4 @@
-/** Indicador del flujo: Terreno → Tratamiento → Cultivos (navegable según el estado). */
+/** Indicador del flujo: Terreno → Tratamiento → Cultivos → Cosecha (navegable según el estado). */
 import { useControllers } from '@/controllers/hooks';
 import { useSimStore, type Fase } from '@/store/useSimStore';
 
@@ -6,21 +6,28 @@ const PASOS: { id: Fase; label: string }[] = [
   { id: 'terreno', label: 'Terreno' },
   { id: 'tratamiento', label: 'Tratamiento' },
   { id: 'cultivos', label: 'Cultivos' },
+  { id: 'cosecha', label: 'Cosecha' },
 ];
 
 export function FlowStepper() {
-  const { treatment } = useControllers();
+  const { treatment, harvest } = useControllers();
   const fase = useSimStore((s) => s.fase);
   const terreno = useSimStore((s) => s.terreno);
   const hayTratadas = useSimStore((s) => s.tiles.some((t) => t.estado === 'arado'));
+  const hayPlantaciones = useSimStore((s) => s.plantaciones.length > 0);
   const actual = PASOS.findIndex((p) => p.id === fase);
 
-  const habilitado = (id: Fase) =>
-    id === 'terreno' ? fase === 'terreno' : id === 'tratamiento' ? !!terreno : !!terreno && hayTratadas;
+  const habilitado = (id: Fase) => {
+    if (id === 'terreno') return fase === 'terreno';
+    if (id === 'tratamiento') return !!terreno;
+    if (id === 'cosecha') return !!terreno && hayPlantaciones;
+    return !!terreno && hayTratadas;
+  };
 
   const ir = (id: Fase) => {
     if (id === 'tratamiento') treatment.goToTreatments();
     if (id === 'cultivos') treatment.goToCrops();
+    if (id === 'cosecha') harvest.goToHarvest();
   };
 
   return (

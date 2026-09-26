@@ -1,14 +1,28 @@
+/**
+ * Escena 3D minimalista: luz simple, sin sombras pesadas, AO ni profundidad de campo
+ * (design.md §2). Compone los modelos por módulo —cielo, luz, terreno, clima, cámara— sin que
+ * este archivo conozca su implementación: cada modelo se añade o cambia en su carpeta.
+ */
 import { Canvas } from '@react-three/fiber';
-import { CameraRig } from './CameraRig';
-import { GridRoot } from './GridRoot';
+import { CameraRig } from './camera';
+import { GridRoot } from './grid';
+import { Lighting } from './lighting';
+import { Sky } from './sky';
+import { WeatherLayer } from './weather';
 
-/** Escena 3D minimalista: luz simple, sin sombras pesadas, AO ni profundidad de campo (design.md §2). */
+/** Cámara inicial; el encuadre definitivo lo pone CameraRig al leer la config. */
+const CAMERA = { fov: 45, near: 0.1, far: 1000 } as const;
+
+/** Nitidez según el dispositivo: hasta 2× en pantallas densas. */
+const DPR: [number, number] = [1, 2];
+
 export function SceneCanvas() {
   return (
-    <Canvas camera={{ fov: 45, near: 0.1, far: 1000 }} dpr={[1, 2]} className="bg-ui-scene">
-      <hemisphereLight args={['#ffffff', '#8a7a66', 1.1]} />
-      <directionalLight position={[10, 18, 8]} intensity={1.4} />
+    <Canvas camera={CAMERA} dpr={DPR} className="bg-ui-scene">
+      <Sky />
+      <Lighting />
       <GridRoot />
+      <WeatherLayer />
       <CameraRig />
     </Canvas>
   );

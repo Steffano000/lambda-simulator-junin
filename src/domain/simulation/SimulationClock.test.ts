@@ -1,16 +1,26 @@
 import { describe, expect, it } from 'vitest';
-import { ClimateRepository, CropRepository, SoilRepository } from '@/data';
+import { ClimateRepository, CropRepository, SoilMixRepository, SoilRepository } from '@/data';
 import { ClimateScenario } from '../climate';
 import { CropFactory } from '../crops';
 import type { TileNode } from '../grid';
+import { SoilHydraulics } from '../hydrology';
 import { TerrainFactory } from '../terrain';
 import { SimulationClock } from './SimulationClock';
 
 const crops = new CropFactory(CropRepository.all());
-const terrains = new TerrainFactory(SoilRepository.all());
+const terrains = new TerrainFactory(SoilRepository.all(), SoilMixRepository.all());
 const clock = new SimulationClock(crops);
 const escenario = (n: string) => new ClimateScenario(n, ClimateRepository.byName(n)!);
-const profile = terrains.createProfile({ clase: 'Franco', reaccion: 'neutro', tamano: 'demo' });
+const profile = terrains.createProfile({
+  mezcla: {
+    id: 'homogenea',
+    nombre: 'Homogénea',
+    descripcion: 'Franco al 100 %',
+    porcentajes: { Franco: 100 },
+  },
+  reaccion: 'neutro',
+  tamano: 'demo',
+});
 
 const sembradas = (humedad = 80): TileNode[] =>
   terrains
@@ -24,8 +34,11 @@ const avanzar = (tiles: TileNode[], dias: number, esc = 'Normal 2001-02', mesIni
     diaInicial: 0,
     mesInicio,
     escenario: escenario(esc),
-    textura: 'media',
-    soilOf: SoilRepository.byClass,
+    seed: profile.config.seed,
+    hidraulica: (clase) => {
+      const suelo = SoilRepository.byClass(clase);
+      return suelo ? SoilHydraulics.of(suelo) : undefined;
+    },
   });
 
 describe('SimulationClock', () => {
@@ -35,11 +48,21 @@ describe('SimulationClock', () => {
     expect(SimulationClock.mesActual(12, 31)).toBe(1);
   });
 
-  it('la papa llega a la etapa Final y se marca madura', () => {
+  it('el déficit hídrico ralentiza el desarrollo: nunca avanza más rápido que el calendario', () => {
     const papa = crops.create('Papa');
-    const { tiles, resumen } = avanzar(sembradas(), papa.inicioFinal);
-    expect(tiles[0].estado).toBe('maduro');
-    expect(resumen.nuevasMaduras).toBe(tiles.length);
+    const { tiles } = avanzar(sembradas(), papa.inicioFinal);
+    for (const t of tiles) {
+      expect(t.diasCultivo).toBeLessThanOrEqual(papa.inicioFinal);
+      expect(t.diasCultivo).toBeGreaterThan(papa.inicioFinal * 0.3);
+    }
+  });
+
+  it('con tiempo suficiente la papa llega a la etapa Final y se marca madura', () => {
+    const papa = crops.create('Papa');
+    const { tiles, resumen } = avanzar(sembradas(), papa.inicioFinal * 3);
+    const vivas = tiles.filter((t) => t.salud > 0);
+    expect(vivas.every((t) => t.estado === 'maduro')).toBe(true);
+    expect(resumen.nuevasMaduras).toBe(vivas.length);
   });
 
   it('un año seco reduce más la humedad y la salud que uno lluvioso', () => {

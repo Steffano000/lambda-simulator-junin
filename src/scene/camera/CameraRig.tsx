@@ -14,14 +14,26 @@ const NINGUNA = -1 as THREE.MOUSE;
 
 const BOTONES = { LEFT: NINGUNA, MIDDLE: THREE.MOUSE.PAN, RIGHT: THREE.MOUSE.ROTATE };
 
+/** Límites de la órbita: por debajo de `minDistance` se ve la celda de cerca. */
+const ORBITA = {
+  distanciaMin: 4,
+  /** Multiplicador de la diagonal: margen para ver la parcela completa. */
+  factorMax: 2.5,
+  /** No baja del horizonte: la cámara no atraviesa el plano base. */
+  anguloPolarMax: Math.PI / 2.2,
+} as const;
+
+/** Encuadre inicial: la diagonal marca la escala de la parcela. */
+const GOD_VIEW = { factor: 0.9, altura: 0.9 } as const;
+
 export function CameraRig() {
   const { rows, cols } = useSimStore((s) => s.config);
   const camera = useThree((s) => s.camera);
   const diagonal = Math.hypot(rows, cols);
 
   useEffect(() => {
-    const d = diagonal * 0.9;
-    camera.position.set(d, d * 0.9, d);
+    const d = diagonal * GOD_VIEW.factor;
+    camera.position.set(d, d * GOD_VIEW.altura, d);
     camera.lookAt(0, 0, 0);
   }, [camera, diagonal]);
 
@@ -31,9 +43,9 @@ export function CameraRig() {
       enableDamping
       mouseButtons={BOTONES}
       target={[0, 0, 0]}
-      minDistance={4}
-      maxDistance={diagonal * 2.5}
-      maxPolarAngle={Math.PI / 2.2}
+      minDistance={ORBITA.distanciaMin}
+      maxDistance={diagonal * ORBITA.factorMax}
+      maxPolarAngle={ORBITA.anguloPolarMax}
     />
   );
 }

@@ -1,0 +1,55 @@
+{
+  "mezclas": [
+    {
+      "id": "valle",
+      "nombre": "Valle de altiplano",
+      "descripcion": "Suelos profundos y francos, los más frecuentes en la parcela de referencia (Franco arcilloso).",
+      "porcentajes": {
+        "Arena": 0,
+        "Arena franca": 0,
+        "Franco arenoso": 10,
+        "Franco": 30,
+        "Franco limoso": 25,
+        "Limo": 10,
+        "Franco arcillo limoso": 10,
+        "Arcilla limosa": 5,
+        "Arcilla": 5,
+        "Franco arcilloso": 5
+      }
+    },
+    {
+      "id": "ladera",
+      "nombre": "Ladera erosionada",
+      "descripcion": "Veriente con arrastre de partículas finas: predomina la fracción limosa y arcillosa en los lomos altos.",
+      "porcentajes": {
+        "Arena": 5,
+        "Arena franca": 10,
+        "Franco arenoso": 10,
+        "Franco": 20,
+        "Franco limoso": 20,
+        "Limo": 15,
+        "Franco arcillo limoso": 10,
+        "Arcilla limosa": 5,
+        "Arcilla": 3,
+        "Franco arcilloso": 2
+      }
+    },
+    {
+      "id": "vega",
+      "nombre": "Vega de ribera",
+      "descripcion": "Depósito reciente junto al cauce: suelos arenosos y franco-arenosos, de drenaje rápido y poca retención.",
+      "porcentajes": {
+        "Arena": 25,
+        "Arena franca": 25,
+        "Franco arenoso": 25,
+        "Franco": 15,
+        "Franco limoso": 5,
+        "Limo": 5,
+        "Franco arcillo limoso": 0,
+        "Arcilla limosa": 0,
+        "Arcilla": 0,
+        "Franco arcilloso": 0
+      }
+    }
+  ]
+}
