@@ -1,41 +1,19 @@
 /**
- * Store lógico (Zustand): ÚNICA fuente de verdad. La escena 3D solo lee de aquí (docs/01).
- * Nuevos slices por fase (clima, sandbox…) se agregan en este directorio.
+ * MODELO de estado (Zustand): ÚNICA fuente de verdad. Solo contiene datos;
+ * las intenciones del usuario pasan por `SimulationController` (src/controllers).
  */
 import { create } from 'zustand';
-import { SoilRepository } from '@/data';
-import { createGrid, GridConfigBuilder, type GridConfig, type TileNode } from '@/domain/grid';
+import { createGridSlice, type GridSlice } from './gridSlice';
+import { createSimulationSlice, type SimulationSlice } from './simulationSlice';
 
-/** Presentación dinámica (design.md §1) */
-export type ViewMode = 'superficie' | 'corte' | 'sandbox';
-/** Overlays temáticos sobre la cara superior */
-export type Overlay = 'suelo' | 'humedad' | 'ph';
+export type { Overlay, ViewMode } from './gridSlice';
+export type { ActiveTool, Mensaje } from './simulationSlice';
 
-interface SimState {
-  config: GridConfig;
-  tiles: TileNode[];
-  selectedId: string | null;
-  viewMode: ViewMode;
-  overlay: Overlay;
-  regenerate: (config: GridConfig) => void;
-  select: (id: string | null) => void;
-  setViewMode: (mode: ViewMode) => void;
-  setOverlay: (overlay: Overlay) => void;
-}
+export type SimState = GridSlice & SimulationSlice;
 
-const soilClasses = SoilRepository.all().map((t) => t.clase);
-const initialConfig = new GridConfigBuilder().preset('demo').seed(2026).build();
-
-export const useSimStore = create<SimState>()((set) => ({
-  config: initialConfig,
-  tiles: createGrid(initialConfig, soilClasses),
-  selectedId: null,
-  viewMode: 'superficie',
-  overlay: 'suelo',
-  regenerate: (config) => set({ config, tiles: createGrid(config, soilClasses), selectedId: null }),
-  select: (selectedId) => set({ selectedId }),
-  setViewMode: (viewMode) => set({ viewMode }),
-  setOverlay: (overlay) => set({ overlay }),
+export const useSimStore = create<SimState>()((...a) => ({
+  ...createGridSlice(...a),
+  ...createSimulationSlice(...a),
 }));
 
 export const useSelectedTile = () =>

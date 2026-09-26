@@ -76,6 +76,10 @@
     @apply inline-flex items-center gap-1.5 rounded-md border border-ui-border bg-ui-panel px-2.5 py-1.5 text-xs font-medium text-ui-ink transition-colors hover:bg-ui-panel-2 disabled:cursor-not-allowed disabled:opacity-50;
   }
 
+  .field {
+    @apply w-full rounded-md border border-ui-border bg-ui-panel px-2 py-1.5 text-xs text-ui-ink;
+  }
+
   .btn-active {
     @apply border-ui-accent bg-ui-accent text-ui-accent-ink hover:bg-ui-accent;
   }

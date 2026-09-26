@@ -4,9 +4,15 @@
  */
 import { SoilRepository } from '@/data';
 import { useSimStore, type Overlay } from '@/store/useSimStore';
-import { humidityColor, phColor, soilColor } from '@/theme/ramps';
+import { humidityColor, phColor, soilColor, stageColor } from '@/theme/ramps';
+import { surface } from '@/theme/tokens';
 
-const legends: Record<Overlay, { title: string; items: { label: string; color: string }[] }> = {
+interface Item {
+  label: string;
+  color: string;
+}
+
+const legends: Record<Overlay, { title: string; items: Item[] }> = {
   suelo: {
     title: 'Clase de suelo',
     items: SoilRepository.all().map((t) => ({ label: t.clase, color: soilColor(t.clase) })),
@@ -21,12 +27,18 @@ const legends: Record<Overlay, { title: string; items: { label: string; color: s
   },
 };
 
-export function Legend() {
-  const overlay = useSimStore((s) => s.overlay);
-  const { title, items } = legends[overlay];
+const etapas: Item[] = [
+  { label: 'Siembra', color: stageColor('siembra') },
+  { label: 'Germinación (inicial)', color: stageColor('germinacion') },
+  { label: 'Desarrollo', color: stageColor('desarrollo') },
+  { label: 'Media', color: stageColor('media') },
+  { label: 'Final (cosechable)', color: stageColor('final') },
+  { label: 'Ciclo completo', color: stageColor('cosecha') },
+];
 
+function Group({ title, items }: { title: string; items: Item[] }) {
   return (
-    <section aria-label="Leyenda" className="panel absolute bottom-4 left-4 z-legend w-56 p-3">
+    <div>
       <h2 className="mb-2 text-xs font-semibold text-ui-ink">{title}</h2>
       <ul className="space-y-1">
         {items.map((item) => (
@@ -36,6 +48,23 @@ export function Legend() {
           </li>
         ))}
       </ul>
+    </div>
+  );
+}
+
+export function Legend() {
+  const overlay = useSimStore((s) => s.overlay);
+  const hayCultivos = useSimStore((s) => s.tiles.some((t) => t.vegetacionId !== null));
+  const hayCanal = useSimStore((s) => s.tiles.some((t) => t.canal));
+  const { title, items } = legends[overlay];
+
+  return (
+    <section aria-label="Leyenda" className="panel absolute bottom-4 left-4 z-legend w-56 space-y-3 p-3">
+      <Group
+        title={title}
+        items={hayCanal ? [...items, { label: 'Canal de riego', color: surface.agua }] : items}
+      />
+      {hayCultivos && <Group title="Etapa del cultivo" items={etapas} />}
     </section>
   );
 }

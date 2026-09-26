@@ -1,5 +1,6 @@
 /** Barra superior: overlay activo (paso 01) y tamaño de grilla (paso 03). */
-import { GridConfigBuilder, SIZE_PRESETS, type SizePreset } from '@/domain/grid';
+import { useController } from '@/controllers/hooks';
+import { SIZE_PRESETS, type SizePreset } from '@/domain/grid';
 import { useSimStore, type Overlay } from '@/store/useSimStore';
 
 const overlays: { id: Overlay; label: string }[] = [
@@ -15,10 +16,9 @@ const sizes: { id: SizePreset; label: string }[] = [
 ];
 
 export function Toolbar() {
+  const controller = useController();
   const overlay = useSimStore((s) => s.overlay);
-  const setOverlay = useSimStore((s) => s.setOverlay);
   const config = useSimStore((s) => s.config);
-  const regenerate = useSimStore((s) => s.regenerate);
 
   return (
     <header className="z-toolbar flex h-toolbar items-center gap-4 border-b border-ui-border bg-ui-panel px-4">
@@ -32,7 +32,7 @@ export function Toolbar() {
             key={o.id}
             className={`btn ${overlay === o.id ? 'btn-active' : ''}`}
             aria-pressed={overlay === o.id}
-            onClick={() => setOverlay(o.id)}
+            onClick={() => controller.setOverlay(o.id)}
           >
             {o.label}
           </button>
@@ -47,7 +47,7 @@ export function Toolbar() {
               key={s.id}
               className={`btn ${active ? 'btn-active' : ''}`}
               aria-pressed={active}
-              onClick={() => regenerate(new GridConfigBuilder().preset(s.id).seed(config.seed).build())}
+              onClick={() => controller.resizeGrid(s.id)}
             >
               {s.label}
               <span className="value opacity-70">

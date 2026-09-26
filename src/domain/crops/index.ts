@@ -9,6 +9,9 @@
  */
 import type { ClimaMes, Cultivo } from '@/data/types';
 
+export { Crop, MESES, type ContextoSiembra, type EtapaVisual } from './Crop';
+export { CropFactory } from './CropFactory';
+
 export type EtapaFenologica = 'inicial' | 'desarrollo' | 'media' | 'final';
 
 export interface EstadoCultivo {

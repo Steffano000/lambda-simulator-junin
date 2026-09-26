@@ -25,6 +25,9 @@ export function createGrid(config: GridConfig, soilClasses: readonly string[]): 
         },
         humedad: Math.round(20 + rng() * 60),
         vegetacionId: null,
+        estado: 'baldio',
+        diasCultivo: 0,
+        canal: false,
       });
     }
   }
