@@ -4,8 +4,15 @@
  * Patrones: Command + Template Method (`TileCommand`) · Factory Method (`CommandFactory`) ·
  * State (`CellLifecycle` en TileNode) · Facade (`ActionsService`, único punto de escritura).
  */
-export { ActionsService, type ActionResult } from './ActionsService';
+export {
+  ActionsService,
+  type ActionResult,
+  type BatchResult,
+  type Omitida,
+  type ToolInfo,
+} from './ActionsService';
 export { CommandFactory, TOOL_IDS, type ToolId } from './CommandFactory';
-export { ABONOS, CANAL, RIEGO } from './commands';
-export { TileCommand, type ActionContext, type Cosecha } from './TileCommand';
+export { ABONOS, CANAL, DRENAJE, ENMIENDAS, RIEGO } from './commands/tratamientos';
+export { PlantingValidator, type Pendiente, type ValidacionSiembra } from './PlantingValidator';
+export { TileCommand, type ActionContext, type CategoriaAccion, type Cosecha } from './TileCommand';
 export type { CellLifecycle } from '../grid';

@@ -1,7 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { ClimateRepository, CropRepository } from '@/data';
 import { ClimateScenarioFactory } from '../climate';
-import { SimulationClock } from '../simulation';
 import { CropFactory } from './CropFactory';
 
 const crops = new CropFactory(CropRepository.all());
@@ -53,10 +52,32 @@ describe('ClimateScenarioFactory', () => {
   });
 });
 
-describe('SimulationClock', () => {
-  it('calcula el mes calendario con meses de 365/12 días', () => {
-    expect(SimulationClock.mesActual(10, 0)).toBe(10);
-    expect(SimulationClock.mesActual(10, 31)).toBe(11);
-    expect(SimulationClock.mesActual(12, 31)).toBe(1);
+describe('Crop · curva Kc, textura y datos faltantes', () => {
+  const papa = crops.create('Papa');
+
+  it('Kc FAO-56: inicial → rampa → medio → rampa a final', () => {
+    const d = papa.datos;
+    expect(papa.kc(0)).toBe(d.kc_inicial);
+    expect(papa.kc(d.dias_inicial + d.dias_desarrollo / 2)).toBeCloseTo((d.kc_inicial + d.kc_medio) / 2, 5);
+    expect(papa.kc(papa.inicioFinal)).toBe(d.kc_medio);
+    expect(papa.kc(d.ciclo_dias)).toBeCloseTo(d.kc_final, 5);
+  });
+
+  it('compatibilidad de textura según textura_preferida', () => {
+    expect(papa.texturaCompatible('media')).toBe(true);
+    expect(papa.texturaCompatible('pesada')).toBe(false);
+    // "sin dato" acepta cualquier textura
+    expect(crops.create('Maíz amiláceo').texturaCompatible('pesada')).toBe(true);
+  });
+
+  it('sin t_base ni helada_letal (Haba) no se inventa un bloqueo climático', () => {
+    const haba = crops.create('Haba (grano seco)');
+    expect(haba.motivosClima({ mes: 7, nombre: 'Jul', et0: 75, lluvia: 28, tmed: 7.5, tmin: -5 })).toEqual(
+      [],
+    );
+  });
+
+  it('el umbral de humedad sale de p_agotamiento (Papa p=0.35 → 65 %)', () => {
+    expect(papa.umbralHumedad).toBe(65);
   });
 });

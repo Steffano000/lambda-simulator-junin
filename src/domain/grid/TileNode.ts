@@ -34,6 +34,8 @@ export interface TileNode {
   diasCultivo: number;
   /** Celda ocupada por un canal de riego */
   canal: boolean;
+  /** Índice de salud del cultivo (CHI) 0–100; 100 sin cultivo */
+  salud: number;
 }
 
 export const tileId = (x: number, z: number): string => `${x}:${z}`;

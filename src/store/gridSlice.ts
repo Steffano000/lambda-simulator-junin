@@ -1,28 +1,38 @@
-/** Estado de la grilla y su presentación (pasos 01 y 03). */
+/** Estado del terreno, sus celdas, la selección por área y la presentación. */
 import type { StateCreator } from 'zustand';
-import { SoilRepository } from '@/data';
-import { createGrid, GridConfigBuilder, type GridConfig, type TileNode } from '@/domain/grid';
+import { container } from '@/app/container';
+import type { GridConfig, TileNode } from '@/domain/grid';
+import type { TerrainOptions, TerrainProfile } from '@/domain/terrain';
 
-/** Presentación dinámica (design.md §1) */
-export type ViewMode = 'superficie' | 'corte' | 'sandbox';
 /** Overlays temáticos sobre la cara superior */
-export type Overlay = 'suelo' | 'humedad' | 'ph';
+export type Overlay = 'suelo' | 'humedad' | 'ph' | 'salud';
 
 export interface GridSlice {
+  /** Terreno confirmado; `null` mientras se elige (fase "terreno") */
+  terreno: TerrainProfile | null;
+  /** Opciones del terreno en edición (vista previa) */
+  opcionesTerreno: TerrainOptions;
   config: GridConfig;
   tiles: TileNode[];
-  selectedId: string | null;
-  viewMode: ViewMode;
+  /** Celdas seleccionadas (clic o arrastre de área) */
+  seleccion: string[];
   overlay: Overlay;
 }
 
-export const soilClasses = SoilRepository.all().map((t) => t.clase);
-const initialConfig = new GridConfigBuilder().preset('demo').seed(2026).build();
+/** Suelo de referencia de la parcela en data/terrenos.json (Saxton y Rawls). */
+export const OPCIONES_INICIALES: TerrainOptions = {
+  clase: 'Franco arcilloso',
+  reaccion: 'neutro',
+  tamano: 'demo',
+};
+
+const preview = container.terrains.createProfile(OPCIONES_INICIALES);
 
 export const createGridSlice: StateCreator<GridSlice, [], [], GridSlice> = () => ({
-  config: initialConfig,
-  tiles: createGrid(initialConfig, soilClasses),
-  selectedId: null,
-  viewMode: 'superficie',
+  terreno: null,
+  opcionesTerreno: OPCIONES_INICIALES,
+  config: preview.config,
+  tiles: container.terrains.createTiles(preview),
+  seleccion: [],
   overlay: 'suelo',
 });

@@ -28,6 +28,7 @@ export function createGrid(config: GridConfig, soilClasses: readonly string[]): 
         estado: 'baldio',
         diasCultivo: 0,
         canal: false,
+        salud: 100,
       });
     }
   }

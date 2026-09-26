@@ -1,9 +1,11 @@
 /**
  * Paso 04 · Entidad de cultivo: envuelve un registro de data/cultivos.json con su
- * comportamiento (etapa por días, madurez, zonificación de siembra EP-03.2).
+ * comportamiento (etapas, Kc, compatibilidad de textura, requisitos y zonificación).
  */
 import type { ClimaMes, Cultivo } from '@/data/types';
 import type { TileNode } from '../grid';
+import type { Textura } from '../terrain/TerrainProfile';
+import { RequirementFactory, umbralHumedad, type Requirement } from './requirements';
 
 /** Etapas visibles (design.md §3): coinciden con las claves `etapa` de la paleta. */
 export type EtapaVisual = 'siembra' | 'germinacion' | 'desarrollo' | 'media' | 'final' | 'cosecha';
@@ -31,8 +33,17 @@ export interface ContextoSiembra {
   clima: ClimaMes;
 }
 
+export interface Faltante {
+  requisito: Requirement;
+  motivo: string;
+}
+
 export class Crop {
-  constructor(readonly datos: Readonly<Cultivo>) {}
+  readonly requisitos: readonly Requirement[];
+
+  constructor(readonly datos: Readonly<Cultivo>) {
+    this.requisitos = RequirementFactory.forCrop(datos);
+  }
 
   get nombre(): string {
     return this.datos.nombre;
@@ -40,6 +51,10 @@ export class Crop {
 
   get cicloDias(): number {
     return this.datos.ciclo_dias;
+  }
+
+  get umbralHumedad(): number {
+    return umbralHumedad(this.datos);
   }
 
   /** Día en que empieza la etapa Final (a partir de ahí se puede cosechar). */
@@ -59,6 +74,19 @@ export class Crop {
     return 'cosecha';
   }
 
+  /** Curva Kc diaria piecewise lineal FAO-56 (docs/04 · 1a). */
+  kc(dias: number): number {
+    const d = this.datos;
+    const finDesarrollo = d.dias_inicial + d.dias_desarrollo;
+    if (dias < d.dias_inicial) return d.kc_inicial;
+    if (dias < finDesarrollo) {
+      return d.kc_inicial + ((dias - d.dias_inicial) / d.dias_desarrollo) * (d.kc_medio - d.kc_inicial);
+    }
+    if (dias < this.inicioFinal) return d.kc_medio;
+    const t = Math.min(1, (dias - this.inicioFinal) / d.dias_final);
+    return d.kc_medio + t * (d.kc_final - d.kc_medio);
+  }
+
   estaMaduro(dias: number): boolean {
     return dias >= this.inicioFinal;
   }
@@ -68,6 +96,23 @@ export class Crop {
     return this.datos.rendimiento_junin_2025 * 0.1;
   }
 
+  /** `textura_preferida`: "sin dato" o vacía = acepta cualquier textura. */
+  texturaCompatible(textura: Textura): boolean {
+    const pref = this.datos.textura_preferida.toLowerCase();
+    if (!/ligera|media|pesada/.test(pref)) return true;
+    return pref.includes(textura);
+  }
+
+  /** Requisitos de la celda que no se cumplen (vacío = lista para sembrar). */
+  faltantes(tile: TileNode): Faltante[] {
+    const out: Faltante[] = [];
+    for (const requisito of this.requisitos) {
+      const motivo = requisito.check(tile);
+      if (motivo) out.push({ requisito, motivo });
+    }
+    return out;
+  }
+
   /** Motivos que impiden sembrar solo por calendario (sin mirar la celda). */
   motivosCalendario(mes: number): string[] {
     return mes === this.datos.mes_siembra
@@ -75,34 +120,25 @@ export class Crop {
       : [`${this.nombre} se siembra en ${MESES[this.datos.mes_siembra - 1]}, no en ${MESES[mes - 1]}.`];
   }
 
-  /**
-   * Zonificación (EP-03.2): lista vacía = se puede sembrar.
-   * - Mes de siembra = `mes_siembra`.
-   * - pH de la celda dentro de [ph_opt_min, ph_opt_max].
-   * - Clima del mes: tmed ≥ t_base (hay crecimiento) y tmin > helada_letal (sin helada letal).
-   */
-  motivosBloqueo({ tile, mes, clima }: ContextoSiembra): string[] {
-    return [...this.motivosCalendario(mes), ...this.motivosClima(clima), ...this.motivosSuelo(tile)];
-  }
-
-  /** Motivos del clima del mes, válidos para cualquier celda. */
+  /** Motivos del clima del mes, válidos para cualquier celda. Sin dato → la regla no aplica. */
   motivosClima(clima: ClimaMes): string[] {
     const d = this.datos;
     const motivos: string[] = [];
-    if (clima.tmed < d.t_base) {
+    if (d.t_base !== null && clima.tmed < d.t_base) {
       motivos.push(`Temperatura media ${clima.tmed} °C bajo la base de ${this.nombre} (${d.t_base} °C).`);
     }
-    if (clima.tmin <= d.helada_letal) {
+    if (d.helada_letal !== null && clima.tmin <= d.helada_letal) {
       motivos.push(`Riesgo de helada: tmin ${clima.tmin} °C ≤ ${d.helada_letal} °C.`);
     }
     return motivos;
   }
 
-  motivosSuelo(tile: TileNode): string[] {
-    const d = this.datos;
-    const ph = tile.suelo.ph;
-    return ph < d.ph_opt_min || ph > d.ph_opt_max
-      ? [`pH ${ph.toFixed(1)} fuera del óptimo de ${this.nombre} (${d.ph_opt_min}–${d.ph_opt_max}).`]
-      : [];
+  /** Zonificación completa (EP-03.2): calendario + clima + requisitos de la celda. */
+  motivosBloqueo({ tile, mes, clima }: ContextoSiembra): string[] {
+    return [
+      ...this.motivosCalendario(mes),
+      ...this.motivosClima(clima),
+      ...this.faltantes(tile).map((f) => f.motivo),
+    ];
   }
 }

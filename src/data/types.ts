@@ -14,12 +14,12 @@ export interface Cultivo {
   kc_medio: number;
   kc_final: number;
   raiz_m: number;
-  p_agotamiento: number;
-  t_base: number;
-  t_superior: number;
+  p_agotamiento: number | null;
+  t_base: number | null;
+  t_superior: number | null;
   t_opt_min: number;
   t_opt_max: number;
-  helada_letal: number;
+  helada_letal: number | null;
   ph_opt_min: number;
   ph_opt_max: number;
   ph_abs_min: number;

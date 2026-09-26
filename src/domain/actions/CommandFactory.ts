@@ -2,22 +2,26 @@
  * Paso 02 · Factory Method de herramientas: resuelve un `ToolId` a su comando
  * sin condicionales (registro de constructores). Agregar una herramienta = una línea.
  */
+import { CosecharCommand, RemoverCommand, SembrarCommand } from './commands/plantacion';
 import {
   AbonarCommand,
+  AcidificarCommand,
   ArarCommand,
   CanalCommand,
-  CosecharCommand,
+  DrenarCommand,
+  EncalarCommand,
   RegarCommand,
-  RemoverCommand,
-  SembrarCommand,
-} from './commands';
-import type { TileCommand } from './TileCommand';
+} from './commands/tratamientos';
+import type { CategoriaAccion, TileCommand } from './TileCommand';
 
 const registry = {
   arar: () => new ArarCommand(),
+  encalar: () => new EncalarCommand(),
+  acidificar: () => new AcidificarCommand(),
   'abonar-organico': () => new AbonarCommand('organico'),
   'abonar-quimico': () => new AbonarCommand('quimico'),
   regar: () => new RegarCommand(),
+  drenar: () => new DrenarCommand(),
   canal: () => new CanalCommand(),
   sembrar: () => new SembrarCommand(),
   cosechar: () => new CosecharCommand(),
@@ -40,7 +44,7 @@ export class CommandFactory {
     return command;
   }
 
-  all(): TileCommand[] {
-    return TOOL_IDS.map((id) => this.create(id));
+  ids(categoria?: CategoriaAccion): ToolId[] {
+    return categoria ? TOOL_IDS.filter((id) => this.create(id).categoria === categoria) : TOOL_IDS;
   }
 }

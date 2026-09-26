@@ -1,11 +1,18 @@
 /**
- * Paso 01/03 · Cámara God-View con límites: no atraviesa el plano base y el zoom
- * se ajusta a la diagonal del terreno al regenerar la grilla.
+ * Cámara God-View con límites: no atraviesa el plano base y el zoom se ajusta a la
+ * diagonal del terreno. El botón izquierdo queda libre para seleccionar celdas:
+ * clic derecho gira, botón central desplaza y la rueda acerca.
  */
 import { OrbitControls } from '@react-three/drei';
 import { useThree } from '@react-three/fiber';
 import { useEffect } from 'react';
+import * as THREE from 'three';
 import { useSimStore } from '@/store/useSimStore';
+
+/** Sin acción: OrbitControls ignora el botón izquierdo. */
+const NINGUNA = -1 as THREE.MOUSE;
+
+const BOTONES = { LEFT: NINGUNA, MIDDLE: THREE.MOUSE.PAN, RIGHT: THREE.MOUSE.ROTATE };
 
 export function CameraRig() {
   const { rows, cols } = useSimStore((s) => s.config);
@@ -22,6 +29,7 @@ export function CameraRig() {
     <OrbitControls
       makeDefault
       enableDamping
+      mouseButtons={BOTONES}
       target={[0, 0, 0]}
       minDistance={4}
       maxDistance={diagonal * 2.5}

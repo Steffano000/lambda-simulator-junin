@@ -5,12 +5,20 @@
  * `FenologiaEngine` es una función PURA y sin estado; recibe los datos por inyección
  * (Repository/DI) y debe cuadrar con scripts/derivar_ciclos.py.
  *
- * TODO(paso-04): curva Kc piecewise FAO-56, partición en meses de 30.42 días, ETc, balance y yield.
+ * Implementado: etapas por días, Kc diario FAO-56, requisitos y zonificación.
+ * TODO(paso-04): partición en meses de 30.42 días y yield por balance hídrico (derivar_ciclos.py).
  */
 import type { ClimaMes, Cultivo } from '@/data/types';
 
-export { Crop, MESES, type ContextoSiembra, type EtapaVisual } from './Crop';
+export { Crop, MESES, type ContextoSiembra, type EtapaVisual, type Faltante } from './Crop';
 export { CropFactory } from './CropFactory';
+export {
+  RequirementFactory,
+  UMBRALES,
+  umbralHumedad,
+  type Requirement,
+  type RequirementId,
+} from './requirements';
 
 export type EtapaFenologica = 'inicial' | 'desarrollo' | 'media' | 'final';
 

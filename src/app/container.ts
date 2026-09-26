@@ -5,10 +5,13 @@
  */
 import { ClimateRepository, CropRepository, SoilRepository } from '@/data';
 import type { ClimaEscenarios } from '@/data/types';
-import { ActionsService, CommandFactory } from '@/domain/actions';
+import { ActionsService, CommandFactory, PlantingValidator } from '@/domain/actions';
 import { ClimateScenarioFactory } from '@/domain/climate';
 import { CropFactory } from '@/domain/crops';
+import { PlantationService } from '@/domain/plantation';
 import { SimulationClock } from '@/domain/simulation';
+import { HealthModel } from '@/domain/stress';
+import { TerrainFactory } from '@/domain/terrain';
 
 const climaFuente: ClimaEscenarios = Object.fromEntries(
   ClimateRepository.scenarioNames().map((n) => [n, [...ClimateRepository.byName(n)!]]),
@@ -16,13 +19,19 @@ const climaFuente: ClimaEscenarios = Object.fromEntries(
 
 const commands = new CommandFactory();
 const crops = new CropFactory(CropRepository.all());
+const health = new HealthModel();
+const actions = new ActionsService(commands);
 
 export const container = {
   crops,
   commands,
+  health,
+  actions,
+  terrains: new TerrainFactory(SoilRepository.all()),
   scenarios: new ClimateScenarioFactory(climaFuente),
-  actions: new ActionsService(commands),
-  clock: new SimulationClock(crops),
+  validator: new PlantingValidator(actions),
+  plantations: new PlantationService(health),
+  clock: new SimulationClock(crops, health),
   soilOf: SoilRepository.byClass,
 } as const;
 

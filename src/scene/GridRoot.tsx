@@ -1,14 +1,16 @@
 /**
- * Paso 01 · Grilla de cubos 1 m³ con instancing (design.md §2).
- * VISTA: solo lee el store; los clics se delegan al controlador.
+ * Grilla de cubos 1 m³ con instancing (design.md §2).
+ * VISTA: solo lee el store. La selección se delega al controlador:
+ * pulsar = punto de inicio, arrastrar = área cuadrada, soltar = fin.
  */
-import { useLayoutEffect, useMemo, useRef } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useRef } from 'react';
 import type { ThreeEvent } from '@react-three/fiber';
 import * as THREE from 'three';
-import { useController } from '@/controllers/hooks';
+import { useControllers, useResaltadas } from '@/controllers/hooks';
 import { useSimStore } from '@/store/useSimStore';
 import { getMaterial } from './factories/materialFactory';
 import { PlantsLayer } from './PlantsLayer';
+import { SelectionLayer } from './SelectionLayer';
 import { tileColor, tileHeight } from './tileVisual';
 
 const box = new THREE.BoxGeometry(1, 1, 1);
@@ -16,15 +18,17 @@ const dummy = new THREE.Object3D();
 const color = new THREE.Color();
 
 export function GridRoot() {
-  const controller = useController();
+  const { selection } = useControllers();
   const tiles = useSimStore((s) => s.tiles);
   const config = useSimStore((s) => s.config);
   const overlay = useSimStore((s) => s.overlay);
-  const selectedId = useSimStore((s) => s.selectedId);
+  const seleccion = useSimStore((s) => s.seleccion);
+  const resaltadas = useResaltadas();
   const ref = useRef<THREE.InstancedMesh>(null);
 
   // Centro de la grilla en el origen
   const offset = useMemo(() => ({ x: (config.cols - 1) / 2, z: (config.rows - 1) / 2 }), [config]);
+  const seleccionSet = useMemo(() => new Set(seleccion), [seleccion]);
 
   useLayoutEffect(() => {
     const mesh = ref.current;
@@ -42,11 +46,27 @@ export function GridRoot() {
     if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
   }, [tiles, overlay, offset]);
 
-  const selected = tiles.find((t) => t.id === selectedId);
+  // El arrastre puede terminar fuera del canvas
+  useEffect(() => {
+    const end = () => selection.end();
+    window.addEventListener('pointerup', end);
+    return () => window.removeEventListener('pointerup', end);
+  }, [selection]);
 
-  const onClick = (e: ThreeEvent<MouseEvent>) => {
+  const idDe = (e: ThreeEvent<PointerEvent>) =>
+    e.instanceId !== undefined ? tiles[e.instanceId]?.id : undefined;
+
+  const onPointerDown = (e: ThreeEvent<PointerEvent>) => {
+    if (e.button !== 0) return; // derecho/central: cámara
     e.stopPropagation();
-    if (e.instanceId !== undefined) controller.clickTile(tiles[e.instanceId].id);
+    const id = idDe(e);
+    if (id) selection.begin(id);
+  };
+
+  const onPointerMove = (e: ThreeEvent<PointerEvent>) => {
+    if (!selection.arrastrando) return;
+    const id = idDe(e);
+    if (id) selection.extend(id);
   };
 
   return (
@@ -55,18 +75,13 @@ export function GridRoot() {
         key={tiles.length}
         ref={ref}
         args={[box, getMaterial('terreno'), tiles.length]}
-        onClick={onClick}
-        onPointerMissed={() => controller.select(null)}
+        onPointerDown={onPointerDown}
+        onPointerMove={onPointerMove}
+        onPointerMissed={(e) => e.button === 0 && selection.clear()}
       />
       <PlantsLayer tiles={tiles} offset={offset} />
-      {selected && (
-        <mesh
-          geometry={box}
-          material={getMaterial('seleccion')}
-          position={[selected.coords.x - offset.x, selected.elevacion + 0.5, selected.coords.z - offset.z]}
-          scale={1.02}
-        />
-      )}
+      <SelectionLayer tiles={tiles} offset={offset} ids={resaltadas} tipo="resaltada" />
+      <SelectionLayer tiles={tiles} offset={offset} ids={seleccionSet} tipo="seleccion" />
     </group>
   );
 }

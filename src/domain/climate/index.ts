@@ -9,6 +9,14 @@
  */
 export { ClimateScenario } from './ClimateScenario';
 export { ClimateScenarioFactory } from './ClimateScenarioFactory';
+export {
+  DIAS_POR_MES,
+  EnvironmentModel,
+  FRIO_NOCTURNO_C,
+  type ClimaDia,
+  type Modificador,
+  type TipoModificador,
+} from './EnvironmentModel';
 
 export type TipoEvento = 'HELADA_METEOROLOGICA' | 'GRANIZADA' | 'SEQUIA';
 

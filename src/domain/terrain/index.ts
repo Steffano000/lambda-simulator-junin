@@ -1,11 +1,19 @@
 /**
- * Paso 07 · Topografía procedural y pisos ecológicos (EP-02.1, 02.2).
+ * Terreno: perfil elegido al inicio del flujo + (paso 07) topografía procedural.
  * Ver docs/07-topografia-procedural.md.
- *
- * Pipeline puro y determinista: seed → Noise → altitud → piso → suelo → tmed_celda.
  *
  * TODO(paso-07): NoiseStrategy (Simplex/Perlin), clasificador y TerrainGenerator.
  */
+export {
+  PH_BASE,
+  REACCION_ETIQUETA,
+  TEXTURA_ETIQUETA,
+  TerrainProfile,
+  texturaDe,
+  type ReaccionPh,
+  type Textura,
+} from './TerrainProfile';
+export { TerrainFactory, type TerrainOptions } from './TerrainFactory';
 
 export type PisoEcologico = 'yunga' | 'quechua' | 'suni' | 'puna';
 

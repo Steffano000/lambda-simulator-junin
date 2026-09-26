@@ -30,6 +30,29 @@ npm run dev        # http://localhost:5173
 | `npm run typecheck` | Chequeo de tipos                          |
 | `npm run format`    | Prettier (ordena también clases Tailwind) |
 
+## Flujo de uso
+
+**Terreno → Acciones → Tratamiento → Validación → Cultivos → Plantación → Estado de plantación → Contexto ambiental → Avance del tiempo**
+
+1. **Terreno** (inicio obligatorio): clase de suelo, reacción (pH) y tamaño. Define la textura, las acciones posibles y los cultivos aptos.
+2. **Acciones**: solo se muestran las que corresponden al terreno y a su estado. Al pasar el cursor sobre una acción se ven sus efectos, prerrequisitos, la condición del terreno, a qué cultivo sirve y si hace falta antes de plantar.
+3. **Tratamiento por área**: un clic selecciona una celda y arrastrar selecciona un área cuadrada. Las celdas que no cumplen se omiten y se explica por qué. La cámara gira con clic derecho.
+4. **Validación**: por cultivo, cada celda se marca como lista o por tratar, con el requisito que falta resaltado en rojo.
+5. **Corrección** (flujo alternativo): "Corregir" vuelve a tratamientos con las celdas pendientes seleccionadas y el tratamiento sugerido; al terminar, "Volver a cultivos".
+6. **Plantación**: se planta solo en las celdas listas; las demás no bloquean.
+7. **Paneles únicos**: _Plantaciones_ (estado, evolución, condiciones, cosecha) y _Contexto ambiental_ (escenario, clima del mes, modificadores, efectos del último avance).
+8. **Tiempo**: iconos para saltos de +1, +7, +15 y +30 días, más un control central − / N días / + / Avanzar.
+
+Los prerrequisitos salen de `data/cultivos.json`:
+
+- **pH:** `ph_opt_min` y `ph_opt_max`.
+- **Humedad:** mínima = (1 − `p_agotamiento`) × 100, según FAO-56.
+- **Nitrógeno:** según `efecto_nitrogeno`; la Haba lo fija, así que no exige mínimo.
+- **Materia orgánica:** se exige cuando `textura_preferida` dice "orgánica".
+- **Textura del terreno:** debe coincidir con `textura_preferida`.
+
+Las cantidades de cada tratamiento y las tasas de salud son parámetros de simulación provisionales, agrupados como constantes en `commands/tratamientos.ts`, `crops/requirements.ts` y `stress/sources.ts`.
+
 ## Estructura
 
 Arquitectura **MVC** en capas unidireccionales. Cada módulo de `src/domain` corresponde a un paso del flujo de `docs/`.
@@ -42,13 +65,14 @@ Arquitectura **MVC** en capas unidireccionales. Cada módulo de `src/domain` cor
 
 `src/app/container.ts` es la raíz de composición: crea una sola vez las fábricas y servicios con los datos de los repositorios. Ningún archivo de lógica supera las **400 líneas**.
 
-| Patrón                    | Dónde                                                                        |
-| ------------------------- | ---------------------------------------------------------------------------- |
-| Factory / Registry        | `CropFactory`, `ClimateScenarioFactory`, `CommandFactory`, `materialFactory` |
-| Command + Template Method | `TileCommand` y sus herramientas (`commands.ts`)                             |
-| Facade                    | `ActionsService`: único punto que escribe el estado agronómico               |
-| Strategy                  | `ClimateScenario` (escenarios intercambiables) · herramienta activa          |
-| State                     | Ciclo de la celda: Baldío → Arado → Sembrado → Maduro → Cosechado            |
+| Patrón                    | Dónde                                                                                                                |
+| ------------------------- | -------------------------------------------------------------------------------------------------------------------- |
+| Factory / Registry        | `TerrainFactory`, `CropFactory`, `RequirementFactory`, `ClimateScenarioFactory`, `CommandFactory`, `materialFactory` |
+| Command + Template Method | `TileCommand` → `commands/tratamientos.ts` y `commands/plantacion.ts`                                                |
+| Facade                    | `ActionsService` (único punto de escritura) · `HealthModel` · `PlantingValidator`                                    |
+| Strategy                  | `ClimateScenario` · fuentes de estrés (`StressSource`) · herramienta activa                                          |
+| State                     | Ciclo de la celda: Baldío → Arado → Sembrado → Maduro → Cosechado                                                    |
+| MVC                       | `BaseController` → Terrain/Selection/Treatment/Planting/TimeController                                               |
 
 ```
 Lambda-simulator/
@@ -62,24 +86,26 @@ Lambda-simulator/
 │   └── derivar_ciclos.py     Referencia auditable del motor fenológico (paso 04)
 ├── src/
 │   ├── app/                  App + container.ts (raíz de composición / DI)
-│   ├── controllers/          CONTROLADOR: SimulationController + hooks de lectura
+│   ├── controllers/          CONTROLADOR: un controlador por etapa del flujo + hooks de lectura
 │   ├── data/                 Repositories tipados sobre data/*.json
 │   ├── domain/               TypeScript PURO: sin React, Three ni store
 │   │   ├── shared/           Command, EventBus, PRNG determinista
 │   │   ├── grid/             01 · 03  TileNode, GridConfig (Builder), createGrid
 │   │   ├── soil/             01 · 02  Reglas físicas del suelo (CC/PMP)
-│   │   ├── actions/          02       TileCommand, CommandFactory, ActionsService
-│   │   ├── crops/            04       Crop, CropFactory (etapas, zonificación)
-│   │   ├── climate/          05       ClimateScenario, ClimateScenarioFactory
-│   │   ├── simulation/       04       SimulationClock (avance de días)
-│   │   ├── stress/           06       GDD diario, CHI, fuentes de estrés
-│   │   ├── terrain/          07       Ruido, pisos ecológicos, TerrainGenerator
+│   │   ├── actions/          02       TileCommand, comandos, CommandFactory, ActionsService, PlantingValidator
+│   │   ├── crops/            04       Crop (etapas, Kc FAO-56), CropFactory, requisitos de siembra
+│   │   ├── climate/          05       ClimateScenario(Factory), EnvironmentModel (clima diario, modificadores)
+│   │   ├── simulation/       04       SimulationClock (balance hídrico diario, salud, etapas)
+│   │   ├── stress/           06       Fuentes de estrés (Strategy) y HealthModel (CHI)
+│   │   ├── plantation/       04 · 06  PlantationService (resumen, evolución, condiciones)
+│   │   ├── terrain/          01 · 07  TerrainProfile, TerrainFactory (+ contratos procedurales)
 │   │   ├── presets/          08       Registry de casos A/B/C
 │   │   ├── sandbox/          09       Experimentos, editor, FreezeTerrain
 │   │   └── persistence/      10       Codecs compacto/RLE/gzip
 │   ├── store/                MODELO de estado: slices de grilla y simulación (Zustand)
-│   ├── scene/                VISTA 3D: GridRoot, PlantsLayer (instancing), cámara, assets
-│   ├── ui/                   VISTA: panels/ (escenario, cultivos, herramientas, tiempo), components/
+│   ├── scene/                VISTA 3D: GridRoot (selección por área), PlantsLayer, SelectionLayer, cámara
+│   ├── ui/                   VISTA: steps/ (terreno, tratamiento, cultivos), panels/ (ambiente,
+│   │                         plantaciones), components/ (TimeBar, FlowStepper, SelectionCard…)
 │   ├── theme/                tokens.ts (paleta) + ramps.ts (estado → color)
 │   ├── styles/               index.css (Tailwind + variables de tema)
 │   └── workers/              Web Workers (parseo de JSON pesados)
@@ -89,18 +115,18 @@ Lambda-simulator/
 
 ## Flujo de implementación
 
-| #   | Fase  | Paso                                       | Estado                                                   |
-| --- | ----- | ------------------------------------------ | -------------------------------------------------------- |
-| 01  | MVP   | Grilla con bloques de tierra e información | Base lista                                               |
-| 02  | MVP   | Acciones por celda                         | Implementado                                             |
-| 03  | MVP   | Dimensiones personalizables del grid       | Base lista                                               |
-| 04  | MVP   | Motor de datos reales: ciclo derivado      | Parcial: etapas y zonificación; falta ETc/balance/yield  |
-| 05  | MVP   | Escenarios climáticos y eventos JSON       | Parcial: selector de escenarios; faltan eventos y editor |
-| 06  | V1.0  | Fenología avanzada y estrés                | Contratos                                                |
-| 07  | V1.0  | Topografía procedural y pisos ecológicos   | Contratos                                                |
-| 08  | V1.0  | Presets y casos estáticos                  | Contratos                                                |
-| 09  | V1.0  | Sandbox y experimentos                     | Contratos                                                |
-| 10  | Final | Optimización y carga de datos              | Contratos                                                |
+| #   | Fase  | Paso                                       | Estado                                                                            |
+| --- | ----- | ------------------------------------------ | --------------------------------------------------------------------------------- |
+| 01  | MVP   | Grilla con bloques de tierra e información | Base lista                                                                        |
+| 02  | MVP   | Acciones por celda                         | Implementado                                                                      |
+| 03  | MVP   | Dimensiones personalizables del grid       | Base lista                                                                        |
+| 04  | MVP   | Motor de datos reales: ciclo derivado      | Parcial: etapas, Kc, ETc y balance diario; falta contrastar con derivar_ciclos.py |
+| 05  | MVP   | Escenarios climáticos y eventos JSON       | Parcial: selector y contexto ambiental; faltan eventos y editor                   |
+| 06  | V1.0  | Fenología avanzada y estrés                | Parcial: CHI y estrés hídrico/térmico/helada/anegamiento; faltan GDD y plagas     |
+| 07  | V1.0  | Topografía procedural y pisos ecológicos   | Contratos                                                                         |
+| 08  | V1.0  | Presets y casos estáticos                  | Contratos                                                                         |
+| 09  | V1.0  | Sandbox y experimentos                     | Contratos                                                                         |
+| 10  | Final | Optimización y carga de datos              | Contratos                                                                         |
 
 "Contratos" significa que las interfaces del módulo ya están definidas según su documento y que la implementación está marcada con `TODO(paso-NN)`.
 

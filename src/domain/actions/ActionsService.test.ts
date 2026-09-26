@@ -1,15 +1,19 @@
 import { describe, expect, it } from 'vitest';
 import { ClimateRepository, CropRepository, SoilRepository } from '@/data';
 import { CropFactory } from '../crops';
-import { createGrid, GridConfigBuilder, type TileNode } from '../grid';
-import { SimulationClock } from '../simulation';
+import type { TileNode } from '../grid';
+import { TerrainFactory } from '../terrain';
 import { ActionsService } from './ActionsService';
 import { CommandFactory, TOOL_IDS } from './CommandFactory';
+import { PlantingValidator } from './PlantingValidator';
 import type { ActionContext } from './TileCommand';
 
 const crops = new CropFactory(CropRepository.all());
+const terrains = new TerrainFactory(SoilRepository.all());
 const papa = crops.create('Papa');
 const clima = ClimateRepository.byName('Normal 2001-02')!;
+const service = new ActionsService();
+const validator = new PlantingValidator(service);
 
 const ctx = (over: Partial<ActionContext> = {}): ActionContext => ({
   crop: papa,
@@ -21,82 +25,113 @@ const ctx = (over: Partial<ActionContext> = {}): ActionContext => ({
   ...over,
 });
 
-const grid = (): TileNode[] =>
-  createGrid(new GridConfigBuilder().size(5, 5).seed(7).build(), ['Franco']).map((t) => ({
+const perfil = (clase = 'Franco', reaccion: 'acido' | 'neutro' | 'alcalino' = 'neutro') =>
+  terrains.createProfile({ clase, reaccion, tamano: 'demo' });
+
+/** Parcela 10×10 homogénea para pruebas deterministas. */
+const grid = (suelo: Partial<TileNode['suelo']> = {}, humedad = 80): TileNode[] =>
+  terrains.createTiles(perfil()).map((t) => ({
     ...t,
-    suelo: { ...t.suelo, ph: 5.5 },
-    humedad: 40,
+    humedad,
+    suelo: { ...t.suelo, ph: 5.5, n: 70, materiaOrganica: 3.5, ...suelo },
   }));
 
-const service = new ActionsService();
+const ids = (tiles: TileNode[], n: number) => tiles.slice(0, n).map((t) => t.id);
 
 describe('CommandFactory', () => {
-  it('crea un comando por cada herramienta y los reutiliza', () => {
+  it('crea un comando por herramienta, lo reutiliza y separa por categoría', () => {
     const factory = new CommandFactory();
     for (const id of TOOL_IDS) expect(factory.create(id)).toBe(factory.create(id));
+    expect(factory.ids('plantacion')).toEqual(['sembrar', 'cosechar', 'remover']);
   });
 });
 
-describe('ActionsService · ciclo de la celda', () => {
-  it('bloquea sembrar sin arar, con motivo', () => {
-    const r = service.execute('sembrar', '0:0', grid(), ctx());
-    expect(r.ok).toBe(false);
-    expect(r.mensaje).toMatch(/Are la celda/);
+describe('Acciones disponibles según terreno y estado', () => {
+  it('en un terreno baldío no ofrece abonos (requieren arar) y drenar solo en suelo pesado', () => {
+    const baldio = grid();
+    const medio = service.disponibles('tratamiento', perfil('Franco'), baldio, ctx()).map((d) => d.id);
+    expect(medio).toContain('arar');
+    expect(medio).not.toContain('abonar-organico');
+    expect(medio).not.toContain('drenar');
+
+    const pesado = service.disponibles('tratamiento', perfil('Arcilla'), baldio, ctx()).map((d) => d.id);
+    expect(pesado).toContain('drenar');
   });
 
-  it('arar → sembrar → madurar → cosechar', () => {
-    let tiles = service.execute('arar', '0:0', grid(), ctx()).tiles;
-    const sembrado = service.execute('sembrar', '0:0', tiles, ctx());
-    expect(sembrado.ok).toBe(true);
-    tiles = sembrado.tiles;
-    expect(tiles[0]).toMatchObject({ vegetacionId: 'Papa', estado: 'sembrado' });
+  it('tras arar aparecen los abonos', () => {
+    const tiles = service.executeMany('arar', ids(grid(), 5), grid(), ctx()).tiles;
+    const disponibles = service.disponibles('tratamiento', perfil(), tiles, ctx()).map((d) => d.id);
+    expect(disponibles).toContain('abonar-quimico');
+  });
+});
 
-    expect(service.execute('cosechar', '0:0', tiles, ctx()).ok).toBe(false);
-
-    tiles = new SimulationClock(crops).advance(tiles, papa.inicioFinal);
-    expect(tiles[0].estado).toBe('maduro');
-
-    const cosecha = service.execute('cosechar', '0:0', tiles, ctx());
-    expect(cosecha.ok).toBe(true);
-    expect(cosecha.cosecha?.kg).toBeCloseTo(papa.rendimientoRefKgM2, 2);
-    expect(cosecha.tiles[0]).toMatchObject({ vegetacionId: null, estado: 'cosechado' });
+describe('Aplicación por área', () => {
+  it('aplica a las celdas válidas y omite el resto con motivo, sin bloquearlas', () => {
+    const base = grid();
+    const arada = service.executeMany('arar', ids(base, 2), base, ctx()).tiles;
+    const r = service.executeMany('arar', ids(arada, 4), arada, ctx());
+    expect(r.aplicadas).toHaveLength(2);
+    expect(r.omitidas).toHaveLength(2);
+    expect(r.omitidas[0].motivo).toBe('La celda ya está arada.');
   });
 
-  it('no permite arar con cultivo maduro sin cosechar', () => {
-    let tiles = service.execute('arar', '0:0', grid(), ctx()).tiles;
-    tiles = service.execute('sembrar', '0:0', tiles, ctx()).tiles;
-    tiles = new SimulationClock(crops).advance(tiles, 200);
-    expect(service.execute('arar', '0:0', tiles, ctx()).mensaje).toBe('Coseche antes de arar.');
-  });
-
-  it('bloquea la siembra fuera del mes de siembra del cultivo', () => {
-    const tiles = service.execute('arar', '0:0', grid(), ctx()).tiles;
-    const r = service.execute('sembrar', '0:0', tiles, ctx({ mes: 3, clima: clima[2] }));
-    expect(r.ok).toBe(false);
-    expect(r.mensaje).toMatch(/se siembra en Oct/);
-  });
-
-  it('abonar exige suelo arado y suma N-P-K', () => {
-    expect(service.execute('abonar-quimico', '0:0', grid(), ctx()).ok).toBe(false);
-    const arado = service.execute('arar', '0:0', grid(), ctx()).tiles;
-    const r = service.execute('abonar-quimico', '0:0', arado, ctx());
-    expect(r.tiles[0].suelo.n).toBe(arado[0].suelo.n + 30);
+  it('encalar sube el pH y acidificar lo baja', () => {
+    const base = grid();
+    const encalado = service.executeMany('encalar', ids(base, 1), base, ctx()).tiles;
+    expect(encalado[0].suelo.ph).toBe(6);
+    const acidificado = service.executeMany('acidificar', ids(encalado, 1), encalado, ctx()).tiles;
+    expect(acidificado[0].suelo.ph).toBe(5.5);
   });
 
   it('regar sube más la humedad en arena que en arcilla', () => {
-    const base = grid();
-    const con = (clase: string) => base.map((t) => ({ ...t, suelo: { ...t.suelo, clase } }));
+    const con = (clase: string) => grid({ clase }, 30);
     const arena = service.execute('regar', '0:0', con('Arena'), ctx()).tiles[0].humedad;
     const arcilla = service.execute('regar', '0:0', con('Arcilla'), ctx()).tiles[0].humedad;
     expect(arena).toBeGreaterThan(arcilla);
   });
 
   it('el canal humedece vecinas de forma decreciente con la distancia', () => {
-    const tiles = service.execute('canal', '2:2', grid(), ctx()).tiles;
+    const base = grid({}, 40);
+    const tiles = service.execute('canal', '5:5', base, ctx()).tiles;
     const h = (id: string) => tiles.find((t) => t.id === id)!.humedad;
-    expect(h('2:2')).toBe(100);
-    expect(h('3:2')).toBeGreaterThan(h('4:2'));
-    expect(h('4:2')).toBeGreaterThan(40);
-    expect(h('0:0')).toBeGreaterThan(40);
+    expect(h('5:5')).toBe(100);
+    expect(h('6:5')).toBeGreaterThan(h('7:5'));
+    expect(h('8:5')).toBe(40);
+  });
+});
+
+describe('Validación de prerrequisitos y plantación', () => {
+  it('separa celdas listas de las que requieren tratamiento y sugiere la herramienta', () => {
+    const base = grid();
+    const aradas = service.executeMany('arar', ids(base, 4), base, ctx()).tiles;
+    // Dos celdas con pH alto para Papa (óptimo 5–6.2)
+    const tiles = aradas.map((t, i) => (i < 2 ? { ...t, suelo: { ...t.suelo, ph: 7.4 } } : t));
+    const v = validator.validar(papa, tiles.slice(0, 4), ctx());
+
+    expect(v.listas).toEqual(['2:0', '3:0']);
+    expect(v.aCorregir).toEqual(['0:0', '1:0']);
+    expect(v.pendientes[0].requisito.id).toBe('ph-alto');
+    expect(v.pendientes[0].herramientas).toContain('acidificar');
+  });
+
+  it('una celda sin arar no bloquea la siembra en las demás', () => {
+    const base = grid();
+    const tiles = service.executeMany('arar', ids(base, 3), base, ctx()).tiles;
+    const r = service.executeMany('sembrar', ids(tiles, 4), tiles, ctx());
+    expect(r.aplicadas).toHaveLength(3);
+    expect(r.omitidas[0].motivo).toMatch(/Falta arar/);
+  });
+
+  it('bloquea la siembra fuera del mes de siembra', () => {
+    const base = grid();
+    const tiles = service.executeMany('arar', ids(base, 1), base, ctx()).tiles;
+    const v = validator.validar(papa, tiles.slice(0, 1), ctx({ mes: 3, clima: clima[2] }));
+    expect(v.bloqueosCultivo[0]).toMatch(/se siembra en Oct/);
+  });
+
+  it('la Haba fija nitrógeno: no exige N mínimo', () => {
+    const haba = crops.create('Haba (grano seco)');
+    expect(haba.requisitos.map((r) => r.id)).not.toContain('nitrogeno');
+    expect(papa.requisitos.map((r) => r.id)).toContain('nitrogeno');
   });
 });

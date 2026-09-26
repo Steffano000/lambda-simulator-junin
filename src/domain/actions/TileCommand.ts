@@ -1,12 +1,13 @@
 /**
  * Paso 02 · Clase base de las herramientas por celda (Command + Template Method).
  * `run()` fija el flujo: validar → aplicar → propagar. Cada subclase solo define
- * sus precondiciones (`validate`) y su efecto (`apply`); las que afectan vecinas
- * sobrescriben `propagate` (Observer de dominio, EP-05.2).
+ * sus precondiciones (`validate`), su efecto (`apply`) y sus metadatos para la UI;
+ * las que afectan vecinas sobrescriben `propagate` (Observer de dominio, EP-05.2).
  */
 import type { ClimaMes, Terreno } from '@/data/types';
-import type { Crop } from '../crops';
+import type { Crop, RequirementId } from '../crops';
 import type { TileNode } from '../grid';
+import type { TerrainProfile } from '../terrain';
 
 export interface ActionContext {
   /** Cultivo seleccionado para sembrar */
@@ -27,7 +28,9 @@ export interface Cosecha {
   tileId: string;
   cultivo: string;
   dia: number;
-  /** kg en la celda de 1 m², con el rendimiento de referencia Junín 2025 */
+  /** Salud (CHI) de la planta al cosechar */
+  salud: number;
+  /** kg en la celda de 1 m² = rendimiento de referencia Junín 2025 × CHI */
   kg: number;
 }
 
@@ -36,11 +39,29 @@ export interface CommandOutcome {
   cosecha?: Cosecha;
 }
 
+export type CategoriaAccion = 'tratamiento' | 'plantacion';
+
 export abstract class TileCommand {
   abstract readonly id: string;
   abstract readonly etiqueta: string;
+  abstract readonly categoria: CategoriaAccion;
+  /** Qué hace, en una línea */
+  abstract readonly descripcion: string;
+  /** Efectos sobre la celda (y vecinas) */
+  abstract readonly efectos: readonly string[];
+  /** Condiciones que debe cumplir la celda */
+  abstract readonly prerrequisitos: readonly string[];
+  /** Requisitos de siembra que esta acción ayuda a cumplir */
+  readonly resuelve: readonly RequirementId[] = [];
+  /** Condición del terreno para que la acción exista (texto); vacío = cualquier terreno */
+  readonly condicionTerreno: string = '';
   /** Texto de éxito mostrado al usuario */
   abstract readonly exito: string;
+
+  /** ¿La acción corresponde a este tipo de terreno? (p. ej. drenar solo suelos pesados) */
+  aplicaA(_terreno: TerrainProfile): boolean {
+    return true;
+  }
 
   /** `null` si se puede ejecutar, o el motivo del bloqueo. */
   protected abstract validate(tile: TileNode, ctx: ActionContext): string | null;

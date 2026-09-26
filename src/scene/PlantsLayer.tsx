@@ -9,6 +9,7 @@ import { container } from '@/app/container';
 import type { EtapaVisual } from '@/domain/crops';
 import type { TileNode } from '@/domain/grid';
 import { stageColor } from '@/theme/ramps';
+import { surface } from '@/theme/tokens';
 import { getMaterial } from './factories/materialFactory';
 import { tileHeight } from './tileVisual';
 
@@ -40,7 +41,8 @@ export function PlantsLayer({ tiles, offset }: Props) {
     plantadas.forEach((tile, i) => {
       const crop = container.crops.find(tile.vegetacionId);
       const etapa = crop ? crop.etapaEn(tile.diasCultivo) : 'siembra';
-      const h = ALTURA[etapa];
+      const muerta = tile.salud <= 0;
+      const h = muerta ? 0.15 : ALTURA[etapa];
       dummy.position.set(
         tile.coords.x - offset.x,
         tile.elevacion + tileHeight(tile),
@@ -49,7 +51,7 @@ export function PlantsLayer({ tiles, offset }: Props) {
       dummy.scale.set(1, h, 1);
       dummy.updateMatrix();
       mesh.setMatrixAt(i, dummy.matrix);
-      mesh.setColorAt(i, color.set(stageColor(etapa)));
+      mesh.setColorAt(i, color.set(muerta ? surface.roca : stageColor(etapa)));
     });
     mesh.count = plantadas.length;
     mesh.instanceMatrix.needsUpdate = true;
