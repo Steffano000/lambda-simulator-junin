@@ -1,5 +1,5 @@
 import type { Config } from 'tailwindcss';
-import { chi, chiEstado, divergente, etapa, humedad, soil, surface } from './src/theme/tokens';
+import { chi, chiEstado, divergente, etapa, humedad, serie, soil, surface } from './src/theme/tokens';
 
 /**
  * Tailwind v4 — cargado desde src/styles/index.css con `@config`.
@@ -7,7 +7,7 @@ import { chi, chiEstado, divergente, etapa, humedad, soil, surface } from './src
  * los de interfaz de variables CSS para soportar tema claro/oscuro.
  *
  * Ejemplos: bg-soil-franco · bg-humedad-60 · text-chi-25 · bg-etapa-media ·
- *           bg-div-n2 · bg-ui-panel · text-ui-ink-muted · z-inspector · w-inspector
+ *           bg-div-n2 · bg-serie-agua · bg-ui-panel · text-ui-ink-muted · z-inspector
  */
 export default {
   content: ['./index.html', './src/**/*.{ts,tsx}'],
@@ -35,6 +35,7 @@ export default {
         chi: { ...chi, ...chiEstado },
         div: divergente,
         etapa,
+        serie,
       },
       fontFamily: {
         sans: ['Inter', 'system-ui', '-apple-system', 'Segoe UI', 'Roboto', 'sans-serif'],

@@ -1,6 +1,7 @@
 /** Instancias únicas de los controladores, compartidas por todas las vistas. */
 import { container } from '@/app/container';
 import { useSimStore } from '@/store/useSimStore';
+import { ClimateController } from './ClimateController';
 import { PlantingController } from './PlantingController';
 import { SelectionController } from './SelectionController';
 import { TerrainController } from './TerrainController';
@@ -12,6 +13,7 @@ export const controllers = {
   selection: new SelectionController(useSimStore, container),
   treatment: new TreatmentController(useSimStore, container),
   planting: new PlantingController(useSimStore, container),
+  climate: new ClimateController(useSimStore, container),
   time: new TimeController(useSimStore, container),
 } as const;
 

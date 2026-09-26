@@ -91,6 +91,16 @@ export const etapa = {
   cosecha: '#D55E00',
 } as const;
 
+/**
+ * Series de las gráficas climáticas (2 slots categóricos). Validados con
+ * dataviz/validate_palette.js en modo claro y oscuro: CVD ΔE 21.9, contraste ≥ 3:1.
+ * Agua (lluvia, tmin) = azul · Demanda/calor (ET0, tmed) = bermellón.
+ */
+export const serie = {
+  agua: '#0072B2',
+  demanda: '#D55E00',
+} as const;
+
 /** Fondo de la escena 3D por tema (debe casar con --ui-scene en styles/index.css). */
 export const scene = {
   light: '#EEF1F4',
@@ -102,4 +112,4 @@ export type SurfaceKey = keyof typeof surface;
 export type EtapaKey = keyof typeof etapa;
 export type ChiEstado = keyof typeof chiEstado;
 
-export const tokens = { soil, surface, humedad, chi, chiEstado, divergente, etapa, scene } as const;
+export const tokens = { soil, surface, humedad, chi, chiEstado, divergente, etapa, serie, scene } as const;

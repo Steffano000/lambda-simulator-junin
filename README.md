@@ -43,6 +43,15 @@ npm run dev        # http://localhost:5173
 7. **Paneles únicos**: _Plantaciones_ (estado, evolución, condiciones, cosecha) y _Contexto ambiental_ (escenario, clima del mes, modificadores, efectos del último avance).
 8. **Tiempo**: iconos para saltos de +1, +7, +15 y +30 días, más un control central − / N días / + / Avanzar.
 
+### Clima: escenarios y sandbox
+
+Se abre con el botón **Clima** de la barra superior y también desde el paso Terreno o el panel de ambiente.
+
+- **Escenarios:** galería de los 5 escenarios reales y de los personalizados. Cada tarjeta muestra la lluvia y la ET0 mensuales, los totales anuales, los meses con déficit y la temperatura mínima. El escenario se cambia en cualquier momento y aplica desde el siguiente día simulado.
+- **Comparativa por cultivo:** ETc, lluvia y balance hídrico del ciclo completo en cada escenario. Reproduce los totales de `docs/spec.md` con menos de 1.5 % de diferencia, y hay tests que lo verifican.
+- **Sandbox climático:** crea un escenario a partir de cualquier otro. Tiene tres modificadores globales (lluvia ×%, ET0 ×% y temperatura +Δ °C) y una tabla editable por mes, donde lo editado a mano tiene prioridad. Muestra gráficas de agua y temperatura comparadas con la base, y valida rangos y que tmin ≤ tmed.
+- **Guardar e intercambiar:** los escenarios propios se guardan en el navegador (`localStorage`) y se pueden exportar o importar en el formato de `data/clima_escenarios.json`. Los JSON inválidos se reportan sin romper la aplicación.
+
 Los prerrequisitos salen de `data/cultivos.json`:
 
 - **pH:** `ph_opt_min` y `ph_opt_max`.
@@ -94,7 +103,7 @@ Lambda-simulator/
 │   │   ├── soil/             01 · 02  Reglas físicas del suelo (CC/PMP)
 │   │   ├── actions/          02       TileCommand, comandos, CommandFactory, ActionsService, PlantingValidator
 │   │   ├── crops/            04       Crop (etapas, Kc FAO-56), CropFactory, requisitos de siembra
-│   │   ├── climate/          05       ClimateScenario(Factory), EnvironmentModel (clima diario, modificadores)
+│   │   ├── climate/          05       ClimateScenario(Factory), ScenarioBuilder, ScenarioCodec, EnvironmentModel
 │   │   ├── simulation/       04       SimulationClock (balance hídrico diario, salud, etapas)
 │   │   ├── stress/           06       Fuentes de estrés (Strategy) y HealthModel (CHI)
 │   │   ├── plantation/       04 · 06  PlantationService (resumen, evolución, condiciones)
@@ -121,7 +130,7 @@ Lambda-simulator/
 | 02  | MVP   | Acciones por celda                         | Implementado                                                                      |
 | 03  | MVP   | Dimensiones personalizables del grid       | Base lista                                                                        |
 | 04  | MVP   | Motor de datos reales: ciclo derivado      | Parcial: etapas, Kc, ETc y balance diario; falta contrastar con derivar_ciclos.py |
-| 05  | MVP   | Escenarios climáticos y eventos JSON       | Parcial: selector y contexto ambiental; faltan eventos y editor                   |
+| 05  | MVP   | Escenarios climáticos y eventos JSON       | Parcial: selector, comparativa y sandbox/editor; faltan eventos JSON (heladas…)   |
 | 06  | V1.0  | Fenología avanzada y estrés                | Parcial: CHI y estrés hídrico/térmico/helada/anegamiento; faltan GDD y plagas     |
 | 07  | V1.0  | Topografía procedural y pisos ecológicos   | Contratos                                                                         |
 | 08  | V1.0  | Presets y casos estáticos                  | Contratos                                                                         |

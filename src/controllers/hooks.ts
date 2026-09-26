@@ -5,7 +5,7 @@
 import { useMemo } from 'react';
 import { container } from '@/app/container';
 import type { ToolId, ToolInfo, ValidacionSiembra } from '@/domain/actions';
-import { EnvironmentModel, type ClimaDia, type Modificador } from '@/domain/climate';
+import { EnvironmentModel, type ClimaDia, type ClimateScenario, type Modificador } from '@/domain/climate';
 import type { ClimaMes } from '@/data/types';
 import { useSimStore } from '@/store/useSimStore';
 import { controllers } from './index';
@@ -25,6 +25,7 @@ export function useClima(): {
   modificadores: Modificador[];
 } {
   const escenario = useSimStore((s) => s.escenario);
+  const personalizados = useSimStore((s) => s.personalizados);
   const mes = useMesActual();
   return useMemo(() => {
     const e = container.scenarios.create(escenario);
@@ -35,7 +36,16 @@ export function useClima(): {
       diario: EnvironmentModel.diario(mensual),
       modificadores: EnvironmentModel.modificadores(e, mes),
     };
-  }, [escenario, mes]);
+    // `personalizados`: un escenario editado conserva su nombre pero cambia sus datos
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [escenario, mes, personalizados]);
+}
+
+/** Escenarios reales + personalizados; se recalcula al crear, editar o borrar uno. */
+export function useEscenarios(): ClimateScenario[] {
+  const personalizados = useSimStore((s) => s.personalizados);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  return useMemo(() => container.scenarios.all(), [personalizados]);
 }
 
 /**

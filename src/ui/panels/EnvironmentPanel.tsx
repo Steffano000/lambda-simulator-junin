@@ -3,10 +3,11 @@
  * efectos sobre los cultivos plantados y cambios del último avance de tiempo.
  */
 import { container } from '@/app/container';
-import { useClima, useControllers } from '@/controllers/hooks';
+import { useClima } from '@/controllers/hooks';
 import { MESES } from '@/domain/crops';
 import type { StressId } from '@/domain/stress';
 import { useSimStore } from '@/store/useSimStore';
+import { ScenarioPicker } from '../climate/ScenarioPicker';
 import { Section } from './Section';
 
 const ESTRES: Record<StressId, string> = {
@@ -34,7 +35,6 @@ function Dato({ label, value, unit }: { label: string; value: string; unit: stri
 }
 
 export function EnvironmentPanel() {
-  const { time } = useControllers();
   const escenario = useSimStore((s) => s.escenario);
   const avance = useSimStore((s) => s.ultimoAvance);
   const hayPlantas = useSimStore((s) => s.plantaciones.length > 0);
@@ -42,18 +42,12 @@ export function EnvironmentPanel() {
 
   return (
     <Section titulo="Contexto ambiental">
-      <select
-        className="field mb-2"
-        value={escenario}
-        onChange={(e) => time.selectScenario(e.target.value)}
-        aria-label="Escenario climático"
-      >
-        {container.scenarios.all().map((e) => (
-          <option key={e.nombre} value={e.nombre}>
-            {e.nombre} · {Math.round(e.lluviaAnual)} mm/año
-          </option>
-        ))}
-      </select>
+      <div className="mb-3">
+        <ScenarioPicker />
+        {container.scenarios.existe(escenario) && container.scenarios.create(escenario).personalizado && (
+          <p className="mt-1 text-2xs text-ui-ink-muted">Escenario personalizado (sandbox climático).</p>
+        )}
+      </div>
 
       <p className="mb-1.5 text-2xs text-ui-ink-muted">
         Condiciones de <strong className="text-ui-ink">{MESES[mes - 1]}</strong>

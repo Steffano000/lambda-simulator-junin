@@ -2,6 +2,7 @@
 import { useControllers } from '@/controllers/hooks';
 import { useSimStore, type Overlay } from '@/store/useSimStore';
 import { FlowStepper } from './FlowStepper';
+import { IconDrop } from './icons';
 
 const overlays: { id: Overlay; label: string }[] = [
   { id: 'suelo', label: 'Suelo' },
@@ -11,8 +12,9 @@ const overlays: { id: Overlay; label: string }[] = [
 ];
 
 export function Toolbar() {
-  const { selection } = useControllers();
+  const { selection, climate } = useControllers();
   const overlay = useSimStore((s) => s.overlay);
+  const escenario = useSimStore((s) => s.escenario);
 
   return (
     <header className="z-toolbar flex h-toolbar items-center gap-6 border-b border-ui-border bg-ui-panel px-4">
@@ -22,7 +24,17 @@ export function Toolbar() {
 
       <FlowStepper />
 
-      <div role="group" aria-label="Capa de color" className="ml-auto flex items-center gap-1">
+      <button
+        className="btn ml-auto max-w-72"
+        onClick={() => climate.open('escenarios')}
+        title="Escenarios climáticos y sandbox"
+      >
+        <IconDrop className="shrink-0 text-serie-agua" />
+        <span className="text-ui-ink-muted">Clima:</span>
+        <span className="truncate">{escenario}</span>
+      </button>
+
+      <div role="group" aria-label="Capa de color" className="flex items-center gap-1">
         <span className="mr-1 text-2xs text-ui-ink-muted">Capa</span>
         {overlays.map((o) => (
           <button

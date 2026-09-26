@@ -2,13 +2,22 @@
  * Paso 05 · Escenarios climáticos y eventos JSON (EP-06.1, 06.2).
  * Ver docs/05-escenarios-climaticos.md.
  *
- * Patrones: Strategy (`ClimateScenario`) · Factory (`ClimateScenarioFactory`) ·
- * Interpreter (`EventEngine`) · Observer (clock de ticks).
+ * Patrones: Strategy (`ClimateScenario`) · Factory/Registry (`ClimateScenarioFactory`) ·
+ * Builder (`ScenarioBuilder`) · Adapter (`ScenarioCodec`) · Interpreter (`EventEngine`).
  *
- * TODO(paso-05): EventEngine (heladas, granizadas, sequías) y editor de escenarios personalizados.
+ * TODO(paso-05): EventEngine (heladas, granizadas, sequías por eventos JSON).
  */
-export { ClimateScenario } from './ClimateScenario';
-export { ClimateScenarioFactory } from './ClimateScenarioFactory';
+export { ClimateScenario, type ResumenClima } from './ClimateScenario';
+export { ClimateScenarioFactory, LIMITES_CLIMA } from './ClimateScenarioFactory';
+export {
+  LIMITES_MODIFICADORES,
+  MODIFICADORES_NEUTROS,
+  ScenarioBuilder,
+  type CampoClima,
+  type Ediciones,
+  type Modificadores,
+} from './ScenarioBuilder';
+export { ScenarioCodec, type EscenarioImportado } from './ScenarioCodec';
 export {
   DIAS_POR_MES,
   EnvironmentModel,

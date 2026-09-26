@@ -6,3 +6,4 @@ export {
   type AvanceInput,
   type ResumenAvance,
 } from './SimulationClock';
+export { CycleBalance, type BalanceCiclo } from './CycleBalance';

@@ -9,6 +9,7 @@ import { SIZE_PRESETS, type SizePreset } from '@/domain/grid';
 import { REACCION_ETIQUETA, TEXTURA_ETIQUETA, texturaDe, type ReaccionPh } from '@/domain/terrain';
 import { useSimStore } from '@/store/useSimStore';
 import { soilColor } from '@/theme/ramps';
+import { ScenarioPicker } from '../climate/ScenarioPicker';
 import { Section } from '../panels/Section';
 
 const TAMANOS: { id: SizePreset; label: string }[] = [
@@ -109,6 +110,13 @@ export function TerrainStep() {
             ))}
           </select>
         </label>
+      </Section>
+
+      <Section titulo="4 · Escenario climático">
+        <ScenarioPicker />
+        <p className="mt-1 text-2xs text-ui-ink-muted">
+          Puedes cambiarlo en cualquier momento; afecta desde el siguiente día simulado.
+        </p>
       </Section>
 
       <Section titulo="Este terreno determina">

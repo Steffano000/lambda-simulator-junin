@@ -1,15 +1,9 @@
-/** Control del tiempo y del escenario climático (contexto ambiental). */
+/** Control del tiempo: saltos de días y avance de la simulación. */
 import { BaseController } from './BaseController';
 
 export const PASO_LIMITES = { min: 1, max: 365 } as const;
 
 export class TimeController extends BaseController {
-  selectScenario(escenario: string): void {
-    this.deps.scenarios.create(escenario); // valida que exista
-    this.set({ escenario });
-    this.notify('ok', `Escenario climático: ${escenario}.`);
-  }
-
   setPaso(dias: number): void {
     if (!Number.isFinite(dias)) return;
     this.set({ pasoDias: Math.min(PASO_LIMITES.max, Math.max(PASO_LIMITES.min, Math.round(dias))) });
