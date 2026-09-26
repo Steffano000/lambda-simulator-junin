@@ -1,0 +1,42 @@
+name: Tarea de fase (01 → 10)
+description: Trabajo asociado a un paso del flujo de ejecución (docs/NN-*.md)
+labels: ['fase']
+body:
+  - type: dropdown
+    id: paso
+    attributes:
+      label: Paso
+      options:
+        - 01 · Grilla con bloques de tierra (MVP)
+        - 02 · Acciones por celda (MVP)
+        - 03 · Dimensiones del grid (MVP)
+        - 04 · Motor de datos / fenología (MVP)
+        - 05 · Escenarios climáticos (MVP)
+        - 06 · Fenología avanzada y estrés (V1.0)
+        - 07 · Topografía procedural (V1.0)
+        - 08 · Presets y casos (V1.0)
+        - 09 · Sandbox y experimentos (V1.0)
+        - 10 · Optimización y carga de datos (Final)
+    validations:
+      required: true
+  - type: input
+    id: ep
+    attributes:
+      label: Épica(s)
+      placeholder: EP-01.1, EP-01.2
+  - type: textarea
+    id: objetivo
+    attributes:
+      label: Objetivo
+      description: Qué funcionalidad de la tabla del paso cubre esta tarea.
+    validations:
+      required: true
+  - type: textarea
+    id: criterios
+    attributes:
+      label: Criterios de aceptación
+      description: Copiar los del apartado "Validación" del paso.
+      placeholder: |
+        - [ ] ...
+    validations:
+      required: true

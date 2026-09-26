@@ -1,0 +1,29 @@
+# Dependencias y build
+node_modules/
+dist/
+*.tsbuildinfo
+coverage/
+
+# Entorno
+.env
+.env.*
+!.env.example
+
+# Editores / SO
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+.idea/
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+npm-debug.log*
+
+# Python (scripts/)
+__pycache__/
+.venv/
+
+# Casos exportados localmente desde el sandbox
+exports/

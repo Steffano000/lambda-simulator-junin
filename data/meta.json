@@ -1,0 +1,21 @@
+{
+  "meta": {
+    "nombre": "Datos del simulador agrícola (MVP) – valle del Mantaro, Junín",
+    "origen": "Datos_Simulador_MVP.xlsx",
+    "clima": "Estación Huayao (3380 m, lat −12.04); ERA5-Land con lluvia calibrada contra la estación",
+    "unidades": {
+      "temperatura": "°C",
+      "agua": "mm",
+      "rendimiento": "t/ha",
+      "dias": "días"
+    },
+    "fuentes": [
+      "FAO-56 (Kc, etapas, raíz, p, tabla 19 de agua del suelo)",
+      "Anexos AquaCrop v4.0 (temperatura base)",
+      "FAO Ecocrop (pH, temperaturas, helada, salinidad)",
+      "Fichas técnicas INIA (ciclos y variedades)",
+      "MIDAGRI SISAGRI (mes de siembra y rendimiento en Junín)",
+      "Saxton y Rawls (2006) para el franco arcilloso de la parcela"
+    ]
+  }
+}

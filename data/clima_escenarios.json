@@ -1,0 +1,494 @@
+{
+  "clima_escenarios": {
+    "Promedio 1950–2026": [
+      {
+        "mes": 1,
+        "nombre": "Ene",
+        "et0": 104.1,
+        "lluvia": 117.9,
+        "tmed": 10.2,
+        "tmin": 6.8
+      },
+      {
+        "mes": 2,
+        "nombre": "Feb",
+        "et0": 91.4,
+        "lluvia": 117.9,
+        "tmed": 10.1,
+        "tmin": 7
+      },
+      {
+        "mes": 3,
+        "nombre": "Mar",
+        "et0": 95.4,
+        "lluvia": 112.6,
+        "tmed": 10.1,
+        "tmin": 7.1
+      },
+      {
+        "mes": 4,
+        "nombre": "Abr",
+        "et0": 87.9,
+        "lluvia": 56.9,
+        "tmed": 9.9,
+        "tmin": 6.4
+      },
+      {
+        "mes": 5,
+        "nombre": "May",
+        "et0": 83.5,
+        "lluvia": 21.4,
+        "tmed": 9.4,
+        "tmin": 5
+      },
+      {
+        "mes": 6,
+        "nombre": "Jun",
+        "et0": 74,
+        "lluvia": 7.5,
+        "tmed": 8.7,
+        "tmin": 3.8
+      },
+      {
+        "mes": 7,
+        "nombre": "Jul",
+        "et0": 80,
+        "lluvia": 7.4,
+        "tmed": 8.2,
+        "tmin": 3
+      },
+      {
+        "mes": 8,
+        "nombre": "Ago",
+        "et0": 91.8,
+        "lluvia": 17.3,
+        "tmed": 8.7,
+        "tmin": 3.8
+      },
+      {
+        "mes": 9,
+        "nombre": "Sep",
+        "et0": 98.5,
+        "lluvia": 40.4,
+        "tmed": 9.2,
+        "tmin": 4.8
+      },
+      {
+        "mes": 10,
+        "nombre": "Oct",
+        "et0": 108.4,
+        "lluvia": 66.7,
+        "tmed": 9.9,
+        "tmin": 5.8
+      },
+      {
+        "mes": 11,
+        "nombre": "Nov",
+        "et0": 107.4,
+        "lluvia": 73.7,
+        "tmed": 10.3,
+        "tmin": 6.2
+      },
+      {
+        "mes": 12,
+        "nombre": "Dic",
+        "et0": 107.6,
+        "lluvia": 95.5,
+        "tmed": 10.4,
+        "tmin": 6.6
+      }
+    ],
+    "Normal 2001-02": [
+      {
+        "mes": 1,
+        "nombre": "Ene",
+        "et0": 116.5,
+        "lluvia": 74.4,
+        "tmed": 10.9,
+        "tmin": 7
+      },
+      {
+        "mes": 2,
+        "nombre": "Feb",
+        "et0": 89.3,
+        "lluvia": 140.5,
+        "tmed": 10.3,
+        "tmin": 7.1
+      },
+      {
+        "mes": 3,
+        "nombre": "Mar",
+        "et0": 97.7,
+        "lluvia": 115,
+        "tmed": 10.2,
+        "tmin": 7.2
+      },
+      {
+        "mes": 4,
+        "nombre": "Abr",
+        "et0": 86.2,
+        "lluvia": 52.1,
+        "tmed": 9.9,
+        "tmin": 6.5
+      },
+      {
+        "mes": 5,
+        "nombre": "May",
+        "et0": 80.3,
+        "lluvia": 18.7,
+        "tmed": 9.2,
+        "tmin": 4.8
+      },
+      {
+        "mes": 6,
+        "nombre": "Jun",
+        "et0": 71,
+        "lluvia": 9.6,
+        "tmed": 8.4,
+        "tmin": 4.1
+      },
+      {
+        "mes": 7,
+        "nombre": "Jul",
+        "et0": 75.1,
+        "lluvia": 28.4,
+        "tmed": 7.5,
+        "tmin": 3.2
+      },
+      {
+        "mes": 8,
+        "nombre": "Ago",
+        "et0": 89.1,
+        "lluvia": 18.2,
+        "tmed": 8,
+        "tmin": 3
+      },
+      {
+        "mes": 9,
+        "nombre": "Sep",
+        "et0": 94.9,
+        "lluvia": 47,
+        "tmed": 9,
+        "tmin": 5.2
+      },
+      {
+        "mes": 10,
+        "nombre": "Oct",
+        "et0": 109.4,
+        "lluvia": 68.7,
+        "tmed": 9.9,
+        "tmin": 6
+      },
+      {
+        "mes": 11,
+        "nombre": "Nov",
+        "et0": 104.4,
+        "lluvia": 75.8,
+        "tmed": 10.8,
+        "tmin": 7.1
+      },
+      {
+        "mes": 12,
+        "nombre": "Dic",
+        "et0": 116.3,
+        "lluvia": 87.3,
+        "tmed": 10.7,
+        "tmin": 6.3
+      }
+    ],
+    "Seco / El Niño 2015-16": [
+      {
+        "mes": 1,
+        "nombre": "Ene",
+        "et0": 117.8,
+        "lluvia": 86.5,
+        "tmed": 11.8,
+        "tmin": 7.5
+      },
+      {
+        "mes": 2,
+        "nombre": "Feb",
+        "et0": 98.8,
+        "lluvia": 119.8,
+        "tmed": 11.8,
+        "tmin": 8.8
+      },
+      {
+        "mes": 3,
+        "nombre": "Mar",
+        "et0": 101.4,
+        "lluvia": 81.9,
+        "tmed": 11.7,
+        "tmin": 8.3
+      },
+      {
+        "mes": 4,
+        "nombre": "Abr",
+        "et0": 94.5,
+        "lluvia": 49.2,
+        "tmed": 11.1,
+        "tmin": 7.3
+      },
+      {
+        "mes": 5,
+        "nombre": "May",
+        "et0": 89.3,
+        "lluvia": 7.6,
+        "tmed": 10.6,
+        "tmin": 5.9
+      },
+      {
+        "mes": 6,
+        "nombre": "Jun",
+        "et0": 74.8,
+        "lluvia": 9.2,
+        "tmed": 9,
+        "tmin": 4
+      },
+      {
+        "mes": 7,
+        "nombre": "Jul",
+        "et0": 84.1,
+        "lluvia": 2.7,
+        "tmed": 8.7,
+        "tmin": 2.7
+      },
+      {
+        "mes": 8,
+        "nombre": "Ago",
+        "et0": 93.7,
+        "lluvia": 16.5,
+        "tmed": 9.3,
+        "tmin": 4.5
+      },
+      {
+        "mes": 9,
+        "nombre": "Sep",
+        "et0": 103.7,
+        "lluvia": 26.3,
+        "tmed": 10.3,
+        "tmin": 5.9
+      },
+      {
+        "mes": 10,
+        "nombre": "Oct",
+        "et0": 114.4,
+        "lluvia": 55.4,
+        "tmed": 10.6,
+        "tmin": 6.5
+      },
+      {
+        "mes": 11,
+        "nombre": "Nov",
+        "et0": 112.2,
+        "lluvia": 62.9,
+        "tmed": 11.4,
+        "tmin": 7.4
+      },
+      {
+        "mes": 12,
+        "nombre": "Dic",
+        "et0": 112.3,
+        "lluvia": 100.3,
+        "tmed": 10.7,
+        "tmin": 6.8
+      }
+    ],
+    "Lluvioso / La Niña 1988-89": [
+      {
+        "mes": 1,
+        "nombre": "Ene",
+        "et0": 97.9,
+        "lluvia": 144.4,
+        "tmed": 9.5,
+        "tmin": 6.6
+      },
+      {
+        "mes": 2,
+        "nombre": "Feb",
+        "et0": 85.1,
+        "lluvia": 137,
+        "tmed": 9.2,
+        "tmin": 6.6
+      },
+      {
+        "mes": 3,
+        "nombre": "Mar",
+        "et0": 82.9,
+        "lluvia": 157.9,
+        "tmed": 9.2,
+        "tmin": 6.9
+      },
+      {
+        "mes": 4,
+        "nombre": "Abr",
+        "et0": 88.3,
+        "lluvia": 59.7,
+        "tmed": 9.6,
+        "tmin": 6.1
+      },
+      {
+        "mes": 5,
+        "nombre": "May",
+        "et0": 80.4,
+        "lluvia": 17.9,
+        "tmed": 9.2,
+        "tmin": 5.5
+      },
+      {
+        "mes": 6,
+        "nombre": "Jun",
+        "et0": 69.5,
+        "lluvia": 21.5,
+        "tmed": 8.3,
+        "tmin": 4.4
+      },
+      {
+        "mes": 7,
+        "nombre": "Jul",
+        "et0": 80.5,
+        "lluvia": 3.8,
+        "tmed": 7.6,
+        "tmin": 2.1
+      },
+      {
+        "mes": 8,
+        "nombre": "Ago",
+        "et0": 85,
+        "lluvia": 47.5,
+        "tmed": 7.7,
+        "tmin": 3.2
+      },
+      {
+        "mes": 9,
+        "nombre": "Sep",
+        "et0": 96.2,
+        "lluvia": 40.1,
+        "tmed": 9.6,
+        "tmin": 5.6
+      },
+      {
+        "mes": 10,
+        "nombre": "Oct",
+        "et0": 109.3,
+        "lluvia": 71.8,
+        "tmed": 9.9,
+        "tmin": 5.7
+      },
+      {
+        "mes": 11,
+        "nombre": "Nov",
+        "et0": 103.1,
+        "lluvia": 75.5,
+        "tmed": 10.2,
+        "tmin": 6.5
+      },
+      {
+        "mes": 12,
+        "nombre": "Dic",
+        "et0": 100.5,
+        "lluvia": 113.1,
+        "tmed": 9.8,
+        "tmin": 6.2
+      }
+    ],
+    "Extremo seco 1991-92": [
+      {
+        "mes": 1,
+        "nombre": "Ene",
+        "et0": 115,
+        "lluvia": 54.5,
+        "tmed": 10.7,
+        "tmin": 6.7
+      },
+      {
+        "mes": 2,
+        "nombre": "Feb",
+        "et0": 100,
+        "lluvia": 109.5,
+        "tmed": 10.5,
+        "tmin": 6.9
+      },
+      {
+        "mes": 3,
+        "nombre": "Mar",
+        "et0": 107.9,
+        "lluvia": 66.3,
+        "tmed": 10.9,
+        "tmin": 6.9
+      },
+      {
+        "mes": 4,
+        "nombre": "Abr",
+        "et0": 95.5,
+        "lluvia": 29.9,
+        "tmed": 10.9,
+        "tmin": 6.7
+      },
+      {
+        "mes": 5,
+        "nombre": "May",
+        "et0": 89.2,
+        "lluvia": 0.7,
+        "tmed": 10.6,
+        "tmin": 5.6
+      },
+      {
+        "mes": 6,
+        "nombre": "Jun",
+        "et0": 71.3,
+        "lluvia": 11.3,
+        "tmed": 8.6,
+        "tmin": 4.1
+      },
+      {
+        "mes": 7,
+        "nombre": "Jul",
+        "et0": 79.6,
+        "lluvia": 3.8,
+        "tmed": 7.6,
+        "tmin": 2.5
+      },
+      {
+        "mes": 8,
+        "nombre": "Ago",
+        "et0": 86.8,
+        "lluvia": 29.8,
+        "tmed": 7.9,
+        "tmin": 3.3
+      },
+      {
+        "mes": 9,
+        "nombre": "Sep",
+        "et0": 99.3,
+        "lluvia": 41.6,
+        "tmed": 8.9,
+        "tmin": 4.1
+      },
+      {
+        "mes": 10,
+        "nombre": "Oct",
+        "et0": 102.8,
+        "lluvia": 68.3,
+        "tmed": 9.4,
+        "tmin": 5.7
+      },
+      {
+        "mes": 11,
+        "nombre": "Nov",
+        "et0": 106.4,
+        "lluvia": 60.4,
+        "tmed": 10,
+        "tmin": 5.7
+      },
+      {
+        "mes": 12,
+        "nombre": "Dic",
+        "et0": 120.9,
+        "lluvia": 61.7,
+        "tmed": 10.8,
+        "tmin": 5.7
+      }
+    ]
+  }
+}
