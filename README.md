@@ -167,3 +167,15 @@ Todas las rampas son aptas para daltonismo y el color nunca va solo: siempre lo 
 ## Contribuir
 
 Ver [CONTRIBUTING.md](CONTRIBUTING.md) para la metodología de ramas, commits y reglas de arquitectura.
+
+## Licencia y Atribución
+
+Este proyecto está bajo la licencia **MIT**. Consulta el archivo [LICENSE](LICENSE) para más detalles.
+
+### Cómo citar / referenciar este proyecto
+Si utilizas este simulador o su código base en investigaciones, trabajos académicos o desarrollos derivados, por favor otorga la correspondiente atribución incluyendo la siguiente cita o enlace:
+
+> **Lambda Simulator** (2026). Simulador web 3D de plantaciones andinas (valle del Mantaro).  
+> Autores: UmbraFlare.  
+> Repositorio: [https://github.com/UmbraFlare-code/Lambda-simulator](https://github.com/UmbraFlare-code/Lambda-simulator)
+

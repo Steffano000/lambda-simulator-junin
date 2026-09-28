@@ -2,6 +2,7 @@
   "name": "lambda-simulator",
   "private": true,
   "version": "1.0.1",
+  "license": "MIT",
   "description": "Simulador web 3D de plantaciones andinas (valle del Mantaro) con datos reales de cultivos, clima y suelos.",
   "type": "module",
   "engines": {
