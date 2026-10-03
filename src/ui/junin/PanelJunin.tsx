@@ -319,9 +319,9 @@ export function PanelJunin() {
             >
               {s.resumen.puede_sembrar
                 ? `Se puede sembrar en ${fmt(s.resumen.area_efectiva_ha, 3)} ha`
-                : !s.resumen.datos_suficientes
-                  ? `Datos insuficientes: solo ${s.resumen.pct_cubierto} % del área tiene datos (mínimo ${UMBRAL_COBERTURA_PCT} %). No se da un rendimiento.`
-                  : 'No se puede sembrar: más del 50 % está bloqueado (ciudad, casas, agua, nieve o área protegida)'}
+                : s.resumen.pct.bloqueado > 50
+                  ? `No se puede sembrar: ${s.resumen.pct.bloqueado} % está bloqueado (ciudad, casas, agua, nieve o área protegida)`
+                  : `Datos insuficientes: solo ${s.resumen.pct_cubierto} % del área no bloqueada tiene datos (mínimo ${UMBRAL_COBERTURA_PCT} %). No se da un rendimiento.`}
             </div>
             <div className="mb-1 flex h-2 overflow-hidden rounded">
               {(

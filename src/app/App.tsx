@@ -3,6 +3,7 @@ import { ClimateModal } from '@/ui/climate/ClimateModal';
 import { HarvestReportModal } from '@/ui/harvest/HarvestReportModal';
 import { ActionFeedback } from '@/ui/components/ActionFeedback';
 import { Legend } from '@/ui/components/Legend';
+import { SeleccionRapida } from '@/ui/components/SeleccionRapida';
 import { SelectionPanels } from '@/ui/selection/SelectionPanels';
 import { TimeBar } from '@/ui/components/TimeBar';
 import { AppShell } from '@/ui/layout/AppShell';
@@ -16,6 +17,7 @@ export function App() {
     <>
       <AppShell>
         <SceneCanvas />
+        <SeleccionRapida />
         <ActionFeedback />
         <SelectionPanels />
         <Legend />

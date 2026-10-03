@@ -1,15 +1,15 @@
 /**
- * Casas y edificaciones EN VIVO desde OpenStreetMap (Overpass API), para la parcela dibujada.
+ * Casas y edificaciones EN VIVO desde OpenStreetMap para la parcela dibujada.
+ * Primero la API oficial de OSM (/api/0.6/map, respondió en ~1 s en pruebas desde Chrome);
+ * si falla (p. ej. zona con demasiados datos), Overpass como respaldo.
  * Si la consulta falla o tarda demasiado, se informa: nunca se asume "no hay casas" en silencio.
  * Limitación: en el campo de Junín OSM tiene pocas casas mapeadas; la UI lo dice.
  */
 import { MARGEN_CASA_M } from '@/domain/junin/estadoChunk';
 import type { Anillo } from '@/domain/junin/parcela';
 
-const SERVIDORES = [
-  'https://overpass-api.de/api/interpreter',
-  'https://overpass.kumi.systems/api/interpreter',
-];
+const API_OSM = 'https://api.openstreetmap.org/api/0.6/map';
+const OVERPASS = 'https://overpass-api.de/api/interpreter';
 const TIEMPO_MAX_MS = 15_000;
 /** Lado máximo de la caja a consultar (km): más grande y Overpass se vuelve lento */
 export const LADO_MAX_CONSULTA_KM = 5;
@@ -44,6 +44,35 @@ export function parsearOverpass(json: { elements?: ElementoOverpass[] }): Anillo
   return out;
 }
 
+/** XML de /api/0.6/map → contornos de las vías (ways) y relaciones con la etiqueta building */
+export function parsearOsmXml(xml: string): Anillo[] {
+  const nodos = new Map<string, [number, number]>();
+  for (const m of xml.matchAll(/<node\b([^>]*)>/g)) {
+    const a = m[1];
+    const id = /\bid="(\d+)"/.exec(a)?.[1];
+    const lat = /\blat="([-\d.]+)"/.exec(a)?.[1];
+    const lon = /\blon="([-\d.]+)"/.exec(a)?.[1];
+    if (id && lat && lon) nodos.set(id, [Number(lon), Number(lat)]);
+  }
+  const vias = new Map<string, { refs: string[]; edificio: boolean }>();
+  for (const m of xml.matchAll(/<way\b[^>]*\bid="(\d+)"[^>]*>([\s\S]*?)<\/way>/g)) {
+    const refs = [...m[2].matchAll(/<nd ref="(\d+)"/g)].map((r) => r[1]);
+    vias.set(m[1], { refs, edificio: /<tag k="building"/.test(m[2]) });
+  }
+  const anillo = (refs: string[]): Anillo =>
+    refs.map((r) => nodos.get(r)).filter((p): p is [number, number] => !!p);
+  const out: Anillo[] = [];
+  for (const v of vias.values()) if (v.edificio && v.refs.length >= 4) out.push(anillo(v.refs));
+  for (const m of xml.matchAll(/<relation\b[^>]*>([\s\S]*?)<\/relation>/g)) {
+    if (!/<tag k="building"/.test(m[1])) continue;
+    for (const mm of m[1].matchAll(/<member type="way" ref="(\d+)" role="outer"/g)) {
+      const v = vias.get(mm[1]);
+      if (v && v.refs.length >= 4) out.push(anillo(v.refs));
+    }
+  }
+  return out.filter((a) => a.length >= 3);
+}
+
 /** bbox = [oeste, sur, este, norte]; se agrega un margen para casas que tocan el borde */
 export async function casasEnVivo(bbox: [number, number, number, number]): Promise<ResultadoCasas> {
   const [w0, s0, e0, n0] = bbox;
@@ -58,43 +87,50 @@ export async function casasEnVivo(bbox: [number, number, number, number]): Promi
     return {
       estado: 'omitido',
       casas: [],
-      fuente: 'OpenStreetMap (Overpass)',
+      fuente: 'OpenStreetMap',
       consultado: ahora,
       latencia_ms: 0,
       mensaje: `Parcela de más de ${LADO_MAX_CONSULTA_KM} km de lado: no se verificaron casas.`,
     };
-  const q = `[out:json][timeout:12];(way["building"](${s},${w},${n},${e});relation["building"](${s},${w},${n},${e}););out geom;`;
   const t0 = performance.now();
-  let ultimoError = '';
-  for (const url of SERVIDORES) {
-    try {
-      const r = await fetch(url, {
-        method: 'POST',
-        body: new URLSearchParams({ data: q }),
-        signal: AbortSignal.timeout(TIEMPO_MAX_MS),
-      });
-      if (!r.ok) throw new Error(`respuesta ${r.status}`);
-      const casas = parsearOverpass(await r.json());
-      const res: ResultadoCasas = {
-        estado: 'ok',
-        casas,
-        fuente: 'OpenStreetMap (Overpass)',
-        consultado: ahora,
-        latencia_ms: Math.round(performance.now() - t0),
-        mensaje: casas.length
-          ? `${casas.length} casa(s) o edificación(es) en OpenStreetMap; se bloquean con ${MARGEN_CASA_M} m de margen.`
-          : 'OpenStreetMap no tiene casas registradas aquí (en zonas rurales puede faltar alguna: revisa la imagen).',
-      };
-      cache.set(clave, res);
-      return res;
-    } catch (err) {
-      ultimoError = (err as Error).message;
-    }
+  const listo = (casas: Anillo[], fuente: string): ResultadoCasas => {
+    const res: ResultadoCasas = {
+      estado: 'ok',
+      casas,
+      fuente,
+      consultado: ahora,
+      latencia_ms: Math.round(performance.now() - t0),
+      mensaje: casas.length
+        ? `${casas.length} casa(s) o edificación(es) en OpenStreetMap; se bloquean con ${MARGEN_CASA_M} m de margen.`
+        : 'OpenStreetMap no tiene casas registradas aquí (en zonas rurales puede faltar alguna: revisa la imagen).',
+    };
+    cache.set(clave, res);
+    return res;
+  };
+  let ultimoError: string;
+  try {
+    const r = await fetch(`${API_OSM}?bbox=${w},${s},${e},${n}`, {
+      signal: AbortSignal.timeout(TIEMPO_MAX_MS),
+    });
+    if (!r.ok) throw new Error(`API OSM respondió ${r.status}`);
+    return listo(parsearOsmXml(await r.text()), 'OpenStreetMap (API oficial)');
+  } catch (err) {
+    ultimoError = (err as Error).message;
+  }
+  try {
+    const q = `[out:json][timeout:12];(way["building"](${s},${w},${n},${e});relation["building"](${s},${w},${n},${e}););out geom;`;
+    const r = await fetch(`${OVERPASS}?data=${encodeURIComponent(q)}`, {
+      signal: AbortSignal.timeout(TIEMPO_MAX_MS),
+    });
+    if (!r.ok) throw new Error(`Overpass respondió ${r.status}`);
+    return listo(parsearOverpass(await r.json()), 'OpenStreetMap (Overpass)');
+  } catch (err) {
+    ultimoError += ` · ${(err as Error).message}`;
   }
   return {
     estado: 'error',
     casas: [],
-    fuente: 'OpenStreetMap (Overpass)',
+    fuente: 'OpenStreetMap',
     consultado: ahora,
     latencia_ms: Math.round(performance.now() - t0),
     mensaje: `No se pudo consultar OpenStreetMap (${ultimoError}): las casas NO se verificaron.`,

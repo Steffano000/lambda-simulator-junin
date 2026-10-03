@@ -70,7 +70,8 @@ export function TreatmentStep() {
 
       <Section titulo="Aplicar">
         <p className="mb-2 text-2xs text-ui-ink-muted">
-          Clic en una celda o arrastra para seleccionar un área. Clic derecho para girar la cámara.
+          Clic en una celda o arrastra para seleccionar un área. Arrastra con clic derecho para girar la
+          cámara; clic derecho sin mover abre «Seleccionar toda la parcela» (o Ctrl + A).
           {hayBloqueadas &&
             ' Las losas planas (casas, ciudad, agua, nieve, área protegida o sin dato) nunca se seleccionan.'}
         </p>

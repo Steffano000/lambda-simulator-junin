@@ -440,3 +440,20 @@ describe('Fase 1: estado de los chunks y área exacta', () => {
     expect(p.tiles.filter((t) => !t.bloqueado).every((t) => t.suelo.n > 0)).toBe(true);
   });
 });
+
+describe('casas desde la API oficial de OpenStreetMap', () => {
+  it('lee los edificios del XML de /api/0.6/map', async () => {
+    const { parsearOsmXml } = await import('@/data/junin/osm');
+    const xml = `<osm>
+ <node id="1" visible="true" version="1" lat="-11.7750" lon="-75.5000"/>
+ <node id="2" visible="true" version="1" lat="-11.7750" lon="-75.4999"/>
+ <node id="3" visible="true" version="1" lat="-11.7751" lon="-75.4999"/>
+ <node id="4" visible="true" version="1" lat="-11.7751" lon="-75.5000"/>
+ <way id="10" visible="true"><nd ref="1"/><nd ref="2"/><nd ref="3"/><nd ref="4"/><nd ref="1"/><tag k="building" v="house"/></way>
+ <way id="11" visible="true"><nd ref="1"/><nd ref="2"/><nd ref="3"/><nd ref="1"/><tag k="highway" v="track"/></way>
+</osm>`;
+    const casas = parsearOsmXml(xml);
+    expect(casas).toHaveLength(1);
+    expect(casas[0][0]).toEqual([-75.5, -11.775]);
+  });
+});
