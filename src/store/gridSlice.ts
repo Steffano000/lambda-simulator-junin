@@ -5,7 +5,7 @@ import type { GridConfig, TileNode } from '@/domain/grid';
 import type { TerrainOptions, TerrainProfile } from '@/domain/terrain';
 
 /** Overlays temáticos sobre la cara superior */
-export type Overlay = 'suelo' | 'humedad' | 'hidratacion' | 'ph' | 'salud';
+export type Overlay = 'suelo' | 'humedad' | 'hidratacion' | 'ph' | 'salud' | 'fidelidad';
 
 export interface GridSlice {
   /** Terreno confirmado; `null` mientras se elige (fase "terreno") */

@@ -8,7 +8,7 @@ import type { TileNode } from '@/domain/grid';
 import { estadoHidrico, tieneSurcos, type EstadoHidrico } from '@/domain/hydrology';
 import type { Overlay } from '@/store/useSimStore';
 import { chiColor, humidityColor, phColor, soilColor } from '@/theme/ramps';
-import { hidratacion, surface } from '@/theme/tokens';
+import { fidelidad, hidratacion, surface } from '@/theme/tokens';
 
 /** Alturas visibles del bloque de terreno, en metros (el cubo mide 1 m). */
 export const ALTURA_BLOQUE = {
@@ -44,6 +44,9 @@ export function tileColor(tile: TileNode, overlay: Overlay): string {
     }
     case 'ph':
       return phColor(tile.suelo.ph);
+    case 'fidelidad':
+      // Parcela real (Fase 2): verde = dato propio, ámbar = remuestreado, morado = extrapolado
+      return tile.fidelidad ? fidelidad[tile.fidelidad] : surface.vacio;
     case 'salud':
       // Sin cultivo: gris neutro para que solo resalten las plantaciones
       return tile.vegetacionId ? chiColor(tile.salud) : surface.vacio;

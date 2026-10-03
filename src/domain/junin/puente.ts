@@ -8,6 +8,7 @@ import { AGUA_INICIAL, GRID_LIMITS, tileId, type GridConfig, type TileNode } fro
 import type { ReaccionPh } from '../terrain';
 import { usable } from './estadoChunk';
 import type { Chunk, GrillaChunks } from './parcela';
+import { fidelidadChunk } from './resolucion';
 
 /** Cultivos de Junín que también existen en data/cultivos.json (simulador 3D) */
 export const CULTIVO_SIMULADOR: Record<string, string> = {
@@ -103,6 +104,7 @@ export function parcelaParaSimulador(g: GrillaChunks, terrenos: readonly Terreno
       ...AGUA_INICIAL,
       bloqueado: bloqueo,
       oculto: !c.dentro,
+      fidelidad: fidelidadChunk(c, g.celda_m),
     };
   });
 

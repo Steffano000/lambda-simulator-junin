@@ -57,6 +57,11 @@ export interface TileNode {
   bloqueado?: { motivo: string; color: string } | null;
   /** Celda fuera del polígono dibujado: existe para completar la grilla, pero no se dibuja */
   oculto?: boolean;
+  /**
+   * Parcela real: qué tan fino es el dato frente a la celda (Fase 2). 'remuestreado' = la celda
+   * hereda el valor de un píxel más grande. Sin parcela real queda indefinido.
+   */
+  fidelidad?: 'real' | 'remuestreado' | 'extrapolado' | null;
 }
 
 export const tileId = (x: number, z: number): string => `${x}:${z}`;

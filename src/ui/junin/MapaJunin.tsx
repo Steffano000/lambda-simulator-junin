@@ -8,12 +8,21 @@ import L from 'leaflet';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useShallow } from 'zustand/react/shallow';
 import { juninController } from '@/controllers/JuninController';
-import { cuadrado, ETIQUETA_MAPA_NASA, terrenoEnPunto, type Chunk } from '@/domain/junin';
+import {
+  CAPAS,
+  CAPAS_POR_CHUNK,
+  cuadrado,
+  ETIQUETA_MAPA_NASA,
+  fidelidadCapa,
+  terrenoEnPunto,
+  type Chunk,
+} from '@/domain/junin';
 import { useJuninStore, type OverlayNasa } from '@/store/juninStore';
 import {
   BASES_HD,
   BASES_NASA,
   colorChunk,
+  COLOR_FIDELIDAD,
   esBaseHD,
   ETIQUETAS_HD,
   OVERLAYS_NASA,
@@ -53,6 +62,8 @@ export function MapaJunin() {
       anillo: st.anillo,
       chunks: st.chunks,
       capaChunk: st.capaChunk,
+      capaFidelidad: st.capaFidelidad,
+      distanciaClimaM: (st.ubicacion?.distancia_km ?? 0) * 1000,
       region: st.region,
       provincias: st.provincias,
       protegidas: st.protegidas,
@@ -323,6 +334,7 @@ export function MapaJunin() {
       elevMax: Math.max(...elevs),
       rendMax: Math.max(0.01, ...(rend ?? []).map((x) => x ?? 0)),
       rend,
+      fid: { celda: s.chunks.celda_m, capa: s.capaFidelidad, distanciaClimaM: s.distanciaClimaM },
     };
     // Imagen de los chunks recortada con el polígono exacto: el borde se ve como lo dibujaste
     // (varios píxeles por chunk para que el corte sea limpio; rápido aunque haya 10 000 chunks)
@@ -366,7 +378,7 @@ export function MapaJunin() {
     ]);
     cg.addTo(m);
     capas.current.chunks = cg;
-  }, [s.anillo, s.chunks, s.capaChunk, s.casas, rend, renderer]);
+  }, [s.anillo, s.chunks, s.capaChunk, s.capaFidelidad, s.distanciaClimaM, s.casas, rend, renderer]);
 
   // Encuadrar la parcela nueva
   useEffect(() => {
@@ -444,6 +456,22 @@ export function MapaJunin() {
             {hover.regla ?? '—'}) · NDVI {hover.ndvi?.toFixed(2) ?? '—'}
           </div>
           {rendHover != null && <div className="font-semibold">Rendimiento {rendHover.toFixed(2)} t/ha</div>}
+          {hover.estado !== 'sin_dato' && s.chunks && (
+            <div className="mt-1 border-t border-black/10 pt-1">
+              <div className="font-semibold">Fidelidad en chunk de {s.chunks.celda_m} m</div>
+              {[...CAPAS_POR_CHUNK, 'clima' as const].map((k) => {
+                const f = fidelidadCapa(k, hover.fuente, s.chunks!.celda_m, s.distanciaClimaM);
+                return (
+                  <div key={k} className="flex items-center gap-1">
+                    <span className="swatch" style={{ background: COLOR_FIDELIDAD[f.fidelidad] }} />
+                    {CAPAS[k].nombre}: {f.fidelidad}
+                    {f.res_m != null &&
+                      ` (dato de ${f.res_m >= 1000 ? `${f.res_m / 1000} km` : `${f.res_m} m`})`}
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </div>
       )}
     </div>

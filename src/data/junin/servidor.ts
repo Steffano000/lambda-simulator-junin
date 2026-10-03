@@ -18,8 +18,9 @@ export async function servidorDisponible(): Promise<boolean> {
 }
 
 /** POST /parcela: chunks de 30 m con relieve, suelo, cobertura y NDVI leídos de los TIF */
-export async function chunksDelServidor(anillo: Anillo): Promise<GrillaChunks> {
-  const r = await fetch(`${API_URL}/parcela`, {
+export async function chunksDelServidor(anillo: Anillo, celda_m?: number): Promise<GrillaChunks> {
+  const q = celda_m ? `?celda_m=${celda_m}` : '';
+  const r = await fetch(`${API_URL}/parcela${q}`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ type: 'Polygon', coordinates: [[...anillo, anillo[0]]] }),

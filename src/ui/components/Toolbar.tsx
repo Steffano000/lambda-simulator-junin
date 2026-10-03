@@ -16,6 +16,11 @@ export function Toolbar() {
   const { selection, climate } = useControllers();
   const overlay = useSimStore((s) => s.overlay);
   const escenario = useSimStore((s) => s.escenario);
+  // «Fidelidad» solo tiene sentido con una parcela real de Junín
+  const conFidelidad = useSimStore((s) => s.tiles.some((t) => t.fidelidad));
+  const visibles = conFidelidad
+    ? [...overlays, { id: 'fidelidad' as Overlay, label: 'Fidelidad' }]
+    : overlays;
 
   return (
     <header className="z-toolbar flex h-toolbar items-center gap-6 border-b border-ui-border bg-ui-panel px-4">
@@ -39,7 +44,7 @@ export function Toolbar() {
 
       <div role="group" aria-label="Capa de color" className="flex items-center gap-1">
         <span className="mr-1 text-2xs text-ui-ink-muted">Capa</span>
-        {overlays.map((o) => (
+        {visibles.map((o) => (
           <button
             key={o.id}
             className={`btn ${overlay === o.id ? 'btn-active' : ''}`}

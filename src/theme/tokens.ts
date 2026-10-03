@@ -117,6 +117,16 @@ export const hidratacion = {
 } as const;
 
 /**
+ * Fidelidad del dato en la celda (parcela real de Junín, Fase 2). Mismos colores que la capa
+ * «Fidelidad» del geovisor (src/ui/junin/colores.ts); siempre van con etiqueta en la leyenda.
+ */
+export const fidelidad = {
+  real: '#1A9641',
+  remuestreado: '#F0B429',
+  extrapolado: '#7B3294',
+} as const;
+
+/**
  * Paleta natural de cada cultivo (modelos 3D e iconos). La etapa fenológica NO se lee de
  * estos colores sino de la forma (tamaño, flores, frutos) y del anillo de etapa en la base,
  * que sí usa `etapa` (design.md §3). Clave = `nombre` de data/cultivos.json.
@@ -214,6 +224,7 @@ export const tokens = {
   etapa,
   serie,
   hidratacion,
+  fidelidad,
   clima,
   planta,
   scene,

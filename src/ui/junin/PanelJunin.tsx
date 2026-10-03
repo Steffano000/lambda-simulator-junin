@@ -6,14 +6,19 @@ import { useMemo, useState, type ReactNode } from 'react';
 import { useShallow } from 'zustand/react/shallow';
 import { juninController as jc } from '@/controllers/JuninController';
 import type { EscenarioId } from '@/data/junin/types';
+import type { ResumenResolucion } from '@/domain/junin';
 import { API_URL } from '@/data/junin/servidor';
 import {
   climaEscenario,
   CULTIVO_SIMULADOR,
   ESCENARIOS,
   ETIQUETA_SIMULACION,
+  CAPAS,
+  CAPAS_POR_CHUNK,
   menuCultivos,
   MOTOR_ETIQUETA,
+  opcionesTamano,
+  type CapaDato,
   PENALIZACION_ADVERTENCIA,
   UMBRAL_COBERTURA_PCT,
 } from '@/domain/junin';
@@ -22,6 +27,7 @@ import {
   BASES_HD,
   BASES_NASA,
   COLOR_ESTADO,
+  COLOR_FIDELIDAD,
   COLOR_REGLA,
   ETIQUETA_CAPA,
   leyendaCapa,
@@ -63,6 +69,63 @@ const Dato = ({ k, v }: { k: string; v: ReactNode }) => (
 );
 
 const fmt = (x: number | null | undefined, d = 1) => (x == null ? '—' : x.toFixed(d));
+const metros = (m: number | null) => (m == null ? 'vector' : m >= 1000 ? `${m / 1000} km` : `${m} m`);
+
+/** Tabla «Resolución efectiva» (Fase 2): qué tan fino es cada dato frente al chunk */
+function ResolucionEfectiva({ r }: { r: ResumenResolucion }) {
+  const ocultas = new Set(['pendiente', 'ndvi']);
+  return (
+    <div className="mt-2 rounded border border-ui-border p-2">
+      <div className="mb-1 flex justify-between gap-2 font-semibold">
+        <span>Resolución efectiva</span>
+        <span className="value">
+          {metros(r.efectiva_m)} ({CAPAS[r.capa_efectiva].nombre.toLowerCase()})
+        </span>
+      </div>
+      <table className="w-full text-2xs">
+        <thead className="text-ui-ink-muted">
+          <tr>
+            <th className="text-left font-normal">Capa</th>
+            <th className="text-right font-normal">Nativa</th>
+            <th className="text-right font-normal">Usada</th>
+            <th className="text-right font-normal">Fidelidad</th>
+          </tr>
+        </thead>
+        <tbody>
+          {r.filas
+            .filter((f) => !ocultas.has(f.capa))
+            .map((f) => (
+              <tr key={f.capa} title={`${f.fuente} · ${f.uso}`}>
+                <td>{f.nombre}</td>
+                <td className="text-right">{metros(f.nativa_m)}</td>
+                <td className="text-right">
+                  {f.efectiva
+                    .map((e) => `${metros(e.res_m)}${f.efectiva.length > 1 ? ` (${e.pct}%)` : ''}`)
+                    .join(' · ')}
+                </td>
+                <td className="text-right">
+                  <span className="inline-flex items-center gap-1">
+                    <span className="swatch" style={{ background: COLOR_FIDELIDAD[f.dominante] }} />
+                    {f.dominante}
+                    {f.factor_max > 1 && f.dominante !== 'real' && ` ×${f.factor_max}`}
+                  </span>
+                </td>
+              </tr>
+            ))}
+        </tbody>
+      </table>
+      {r.advertencias.map((a) => (
+        <p
+          key={a}
+          className={`mt-1 text-2xs ${a.startsWith('Tus chunks') ? 'text-amber-700' : 'text-ui-ink-muted'}`}
+        >
+          {a.startsWith('Tus chunks') ? '⚠ ' : '▫ '}
+          {a}
+        </p>
+      ))}
+    </div>
+  );
+}
 
 const ESC_CORTO: Record<EscenarioId, string> = {
   normal: 'Normal',
@@ -97,6 +160,10 @@ export function PanelJunin() {
       plan: st.plan,
       servidor: st.servidor,
       casas: st.casas,
+      celdaElegida: st.celdaElegida,
+      limite: st.limite,
+      resolucion: st.resolucion,
+      capaFidelidad: st.capaFidelidad,
     })),
   );
   const res = useResultadoJunin();
@@ -290,20 +357,46 @@ export function PanelJunin() {
                 ▫ {m}
               </p>
             ))}
+            <label className="mt-2 flex items-center gap-2">
+              <span className="text-ui-ink-muted">Tamaño de chunk</span>
+              <select
+                className="field"
+                value={s.celdaElegida ?? 'auto'}
+                onChange={(e) => void jc.setCelda(e.target.value === 'auto' ? null : Number(e.target.value))}
+              >
+                {opcionesTamano(s.anillo!, s.limite.maxLado).map((o) =>
+                  o.recomendado ? (
+                    <option key="auto" value="auto">
+                      Automático: {o.celda_m} m ({o.columnas}×{o.filas}) · recomendado
+                    </option>
+                  ) : (
+                    <option key={o.celda_m} value={o.celda_m}>
+                      {o.celda_m} m ({o.columnas}×{o.filas} = {o.total.toLocaleString('es-PE')})
+                    </option>
+                  ),
+                )}
+              </select>
+            </label>
+            {s.limite.motivo && <p className="text-2xs text-amber-700">{s.limite.motivo}</p>}
+            {s.resolucion && <ResolucionEfectiva r={s.resolucion} />}
             <details className="mt-1 text-2xs text-ui-ink-muted">
               <summary className="cursor-pointer">¿Por qué chunks de {s.chunks.celda_m} m?</summary>
               <p className="mt-1">
-                Se usa el chunk más chico posible sin pasar de 100 × 100 (el límite del simulador 3D): 1 m si
-                la parcela mide hasta 100 m de lado (≈1 ha), 2-5 m hasta 500 m de lado, 10-30 m hasta 3 km.
+                El automático es el chunk más chico sin pasar de {s.limite.maxLado} × {s.limite.maxLado} (el
+                límite del 3D en este equipo): 1 m si la parcela mide hasta {s.limite.maxLado} m de lado.
+                Sirve para <b>dibujar</b>: seguir el borde, medir el área exacta y ubicar surcos (1 m = un
+                surco de papa, 0.9-1.0 m; INIA).
               </p>
               <p className="mt-1">
-                <b>1 m es el mínimo</b>: es el ancho de un surco (papa: 0.9-1.0 m entre surcos) y la celda del
-                simulador 3D. Más chico no corresponde a ninguna labor del agricultor.
+                Para <b>calcular</b>, lo más fino que existe es 30 m (uso de suelo); el relieve es de 90 m, el
+                suelo de 250 m y el clima de ~10 km. Un chunk más chico que su dato es «remuestreado»: hereda
+                el valor del píxel que lo contiene, y sus vecinos tienen el mismo. Mira la capa «Fidelidad» en
+                el paso 6.
               </p>
               <p className="mt-1">
-                El dato no es de 1 m: la cobertura se mide a 30 m, el relieve a 90 m (interpolado), el suelo a
-                250 m y el clima a ~10 km. Los chunks de una misma celda de 30 m comparten sus datos; el chunk
-                fino sirve para seguir la forma de tu parcela y medir bien su área.
+                Elige 30 m si quieres que cada chunk tenga su propio dato de uso de suelo; elige el automático
+                si quieres ver la forma y el surco. El área y el rendimiento total no cambian con el tamaño
+                (se mide la fracción exacta de cada chunk dentro del polígono).
               </p>
             </details>
           </>
@@ -416,6 +509,20 @@ export function PanelJunin() {
                   </button>
                 ))}
             </div>
+            {s.capaChunk === 'fidelidad' && (
+              <div className="mb-2 flex flex-wrap items-center gap-1">
+                <span className="text-2xs text-ui-ink-muted">De:</span>
+                {(['peor', ...CAPAS_POR_CHUNK, 'clima'] as (CapaDato | 'peor')[]).map((k) => (
+                  <button
+                    key={k}
+                    className={`btn px-2 py-0.5 text-2xs ${s.capaFidelidad === k ? 'btn-active' : ''}`}
+                    onClick={() => jc.setCapaFidelidad(k)}
+                  >
+                    {k === 'peor' ? 'La más baja' : CAPAS[k].nombre}
+                  </button>
+                ))}
+              </div>
+            )}
             <div className="flex flex-wrap gap-x-3 gap-y-1">
               {leyendaCapa(
                 s.capaChunk,

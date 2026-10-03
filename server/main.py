@@ -168,7 +168,8 @@ def terreno(lat: float, lon: float):
 
 
 @app.post("/parcela")
-def parcela(geom: dict):
+def parcela(geom: dict, celda_m: float | None = None):
+    """celda_m opcional (?celda_m=5): tamaño de chunk elegido en la app; si no, el automático."""
     if geom.get("type") != "Polygon":
         raise HTTPException(400, "Se espera un GeoJSON Polygon")
     anillo = geom["coordinates"][0]
@@ -177,15 +178,19 @@ def parcela(geom: dict):
     oeste, este, sur, norte = min(lons), max(lons), min(lats), max(lats)
     lat0 = (norte + sur) / 2
     lado = max((norte - sur) * M_GRADO, (este - oeste) * M_GRADO * math.cos(math.radians(lat0)))
-    ideal = lado / MAX_LADO
+    ideal = lado / MAX_LADO - 1e-6  # tolerancia al redondeo, igual que la app
     if ideal <= CELDA_BASE:  # mismo criterio que la app (src/domain/junin/parcela.ts)
         celda = float(next(p for p in PASOS_FINOS if p >= max(CELDA_MIN, ideal)))
     else:
-        celda = CELDA_BASE * max(1, math.ceil(lado / (CELDA_BASE * MAX_LADO)))
+        celda = CELDA_BASE * max(1, math.ceil(lado / (CELDA_BASE * MAX_LADO) - 1e-6))
+    if celda_m is not None:
+        if celda_m < CELDA_MIN or lado / celda_m > MAX_LADO + 1e-6:
+            raise HTTPException(400, f"celda_m={celda_m} da más de {MAX_LADO} chunks por lado o es menor a {CELDA_MIN} m")
+        celda = float(celda_m)
     dlat = celda / M_GRADO
     dlon = celda / (M_GRADO * math.cos(math.radians(lat0)))
-    filas = max(1, math.ceil((norte - sur) / dlat))
-    columnas = max(1, math.ceil((este - oeste) / dlon))
+    filas = max(1, math.ceil((norte - sur) / dlat - 1e-6))
+    columnas = max(1, math.ceil((este - oeste) / dlon - 1e-6))
     tr = Affine(dlon, 0, oeste, 0, -dlat, norte)
     f = fuentes()
     if not f["elev"].exists():

@@ -27,6 +27,14 @@ const legends: Record<Exclude<Overlay, 'suelo'>, { title: string; items: Item[] 
     title: 'pH del suelo',
     items: [4, 5, 6, 7, 8, 9].map((v) => ({ label: v.toFixed(1), color: phColor(v) })),
   },
+  fidelidad: {
+    title: 'Fidelidad del dato (parcela real)',
+    items: [
+      { label: 'Real: dato igual o más fino que la celda', color: tokens.fidelidad.real },
+      { label: 'Remuestreado: hereda un píxel más grande', color: tokens.fidelidad.remuestreado },
+      { label: 'Extrapolado: fuera del alcance del dato', color: tokens.fidelidad.extrapolado },
+    ],
+  },
   salud: {
     title: 'Salud del cultivo (CHI)',
     items: [

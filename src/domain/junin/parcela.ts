@@ -111,19 +111,54 @@ export function cuadrado(lat: number, lon: number, lado_m: number): Anillo {
   ];
 }
 
-/** Tamaño de chunk: el más chico de PASOS_FINOS (desde 1 m) que no pase de MAX_LADO chunks por lado */
-export function tamanoChunk(a: Anillo): number {
+/** Lado mayor de la caja de la parcela, en metros */
+export function ladoParcelaM(a: Anillo): { alto: number; ancho: number; lado: number } {
   const lats = a.map((p) => p[1]);
   const lons = a.map((p) => p[0]);
   const lat0 = (Math.min(...lats) + Math.max(...lats)) / 2;
   const alto = (Math.max(...lats) - Math.min(...lats)) * M_POR_GRADO;
   const ancho = (Math.max(...lons) - Math.min(...lons)) * M_POR_GRADO * Math.cos((lat0 * Math.PI) / 180);
-  const lado = Math.max(alto, ancho);
-  const ideal = lado / MAX_LADO;
-  if (ideal <= CELDA_BASE_M)
-    return PASOS_FINOS.find((p) => p >= Math.max(CELDA_MIN_M, ideal)) ?? CELDA_BASE_M;
-  return CELDA_BASE_M * Math.max(1, Math.ceil(lado / (CELDA_BASE_M * MAX_LADO)));
+  return { alto, ancho, lado: Math.max(alto, ancho) };
 }
+
+/**
+ * Tamaño de chunk automático: el más chico de PASOS_FINOS (desde 1 m) que no pase de `maxLado`
+ * chunks por lado. `maxLado` es 100 en escritorio y menos en celulares (ver dispositivo.ts).
+ */
+export function tamanoChunk(a: Anillo, maxLado = MAX_LADO): number {
+  const { lado } = ladoParcelaM(a);
+  const ideal = lado / maxLado - 1e-6; // tolerancia: un cuadrado de 100 m mide 100.0000001 m
+  if (ideal > CELDA_BASE_M)
+    return CELDA_BASE_M * Math.max(1, Math.ceil(lado / (CELDA_BASE_M * maxLado) - 1e-6));
+  return PASOS_FINOS.find((p) => p >= Math.max(CELDA_MIN_M, ideal)) ?? CELDA_BASE_M;
+}
+
+export interface OpcionTamano {
+  celda_m: number;
+  filas: number;
+  columnas: number;
+  total: number;
+  /** El automático para este dispositivo */
+  recomendado: boolean;
+}
+
+/**
+ * Tamaños de chunk posibles para la parcela (selector del paso 3): desde el automático hasta
+ * que la parcela quepa en un solo chunk. Más finos que el automático pasarían el límite de chunks.
+ */
+export function opcionesTamano(a: Anillo, maxLado = MAX_LADO): OpcionTamano[] {
+  const auto = tamanoChunk(a, maxLado);
+  const { alto, ancho, lado } = ladoParcelaM(a);
+  const tamanos = [auto, ...TAMANOS_OFRECIDOS.filter((c) => c > auto && c < lado)];
+  return [...new Set(tamanos)].map((c) => {
+    const filas = Math.max(1, Math.ceil(alto / c - 1e-6));
+    const columnas = Math.max(1, Math.ceil(ancho / c - 1e-6));
+    return { celda_m: c, filas, columnas, total: filas * columnas, recomendado: c === auto };
+  });
+}
+
+/** Tamaños del selector: los finos dividen a 30 m y los gruesos son múltiplos de 30 m */
+const TAMANOS_OFRECIDOS = [...PASOS_FINOS, 60, 90, 150, 300, 600, 900];
 
 /** Elevación bilineal en la grilla de 1 km (suaviza el relieve entre celdas) */
 function elevacionBilineal(g: GrillaCapas, lat: number, lon: number): number | null {
@@ -191,9 +226,12 @@ export interface FuentesLocales {
 const reglaDe = (wc: number | null, reglas: ReglasUsoSuelo): ReglaUso | null =>
   wc == null ? null : (reglas.worldcover[String(wc)]?.regla ?? null);
 
-/** Paso 6 (Fase 1): divide la parcela en chunks y les asigna datos locales */
-export function construirChunks(anillo: Anillo, f: FuentesLocales): GrillaChunks {
-  const celda = tamanoChunk(anillo);
+/**
+ * Paso 6 (Fase 1): divide la parcela en chunks y les asigna datos locales.
+ * `celda_m`: tamaño elegido por el usuario; si no se da, el automático (tamanoChunk).
+ */
+export function construirChunks(anillo: Anillo, f: FuentesLocales, celda_m?: number): GrillaChunks {
+  const celda = celda_m ?? tamanoChunk(anillo);
   const lats = anillo.map((p) => p[1]);
   const lons = anillo.map((p) => p[0]);
   const norte = Math.max(...lats);
@@ -203,8 +241,8 @@ export function construirChunks(anillo: Anillo, f: FuentesLocales): GrillaChunks
   const lat0 = (norte + sur) / 2;
   const dlat = celda / M_POR_GRADO;
   const dlon = celda / (M_POR_GRADO * Math.cos((lat0 * Math.PI) / 180));
-  const filas = Math.max(1, Math.ceil((norte - sur) / dlat));
-  const columnas = Math.max(1, Math.ceil((este - oeste) / dlon));
+  const filas = Math.max(1, Math.ceil((norte - sur) / dlat - 1e-6));
+  const columnas = Math.max(1, Math.ceil((este - oeste) / dlon - 1e-6));
   const clases = (f.grilla.leyendas?.textura_app as string[] | undefined) ?? [];
   const chunks: Chunk[] = [];
 

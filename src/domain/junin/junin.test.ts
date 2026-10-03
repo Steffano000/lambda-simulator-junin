@@ -173,7 +173,7 @@ describe('piloto: parcela dibujada → chunks → rendimiento → 3D', () => {
     const anillo = cuadrado(-12.0383, -75.3228, 300);
     expect(areaHa(anillo)).toBeCloseTo(9, 0);
     const g = construirChunks(anillo, { grilla, parcelas, reglas: n.reglas });
-    expect(g.celda_m).toBe(5); // 300 m / 100 chunks = 3 m justo; por redondeo pasa a 5 m
+    expect(g.celda_m).toBe(3); // 300 m / 100 chunks = 3 m justo (con tolerancia al redondeo)
     expect(g.filas * g.columnas).toBeGreaterThan(3000);
     const res = resumirParcela(g, n.reglas);
     expect(res.puede_sembrar).toBe(true);
@@ -455,5 +455,101 @@ describe('casas desde la API oficial de OpenStreetMap', () => {
     const casas = parsearOsmXml(xml);
     expect(casas).toHaveLength(1);
     expect(casas[0][0]).toEqual([-75.5, -11.775]);
+  });
+});
+
+describe('Fase 2: fidelidad por tamaño de chunk', () => {
+  it('registro de resoluciones: nativas y efectivas por fuente', async () => {
+    const { CAPAS, resolucionEfectiva } = await import('./resolucion');
+    expect(CAPAS.uso_suelo.nativa_m).toBe(10);
+    expect(CAPAS.relieve.nativa_m).toBe(90);
+    expect(CAPAS.suelo.nativa_m).toBe(250);
+    expect(CAPAS.casas.nativa_m).toBeNull();
+    // remuestrear a 30 m no agrega detalle: WorldCover queda en 30, SoilGrids en 250
+    expect(resolucionEfectiva('uso_suelo', '30m')).toBe(30);
+    expect(resolucionEfectiva('suelo', '30m')).toBe(250);
+    expect(resolucionEfectiva('uso_suelo', '1km')).toBe(1000);
+    expect(resolucionEfectiva('clima', '30m')).toBe(10_000);
+  });
+
+  it('real / remuestreado / extrapolado según chunk y distancia', async () => {
+    const { fidelidadCapa } = await import('./resolucion');
+    expect(fidelidadCapa('uso_suelo', '30m', 1).fidelidad).toBe('remuestreado');
+    expect(fidelidadCapa('uso_suelo', '30m', 1).factor).toBe(30);
+    expect(fidelidadCapa('uso_suelo', '30m', 30).fidelidad).toBe('real');
+    expect(fidelidadCapa('suelo', '30m', 30).fidelidad).toBe('remuestreado');
+    expect(fidelidadCapa('casas', '30m', 1).fidelidad).toBe('real');
+    expect(fidelidadCapa('clima', '30m', 5, 3_000).fidelidad).toBe('remuestreado');
+    expect(fidelidadCapa('clima', '30m', 5, 25_000).fidelidad).toBe('extrapolado');
+  });
+
+  it('selector de tamaño: el automático respeta el límite del equipo', async () => {
+    const { cuadrado, opcionesTamano, tamanoChunk } = await import('./parcela');
+    const ha1 = cuadrado(-11.775, -75.5, 100);
+    expect(tamanoChunk(ha1)).toBe(1);
+    expect(tamanoChunk(ha1, 50)).toBe(2); // celular: 50 × 50 como máximo
+    const ops = opcionesTamano(ha1);
+    expect(ops[0]).toMatchObject({ celda_m: 1, recomendado: true });
+    expect(ops.every((o) => o.filas <= 100 && o.columnas <= 100)).toBe(true);
+    expect(ops.map((o) => o.celda_m)).toContain(30);
+    expect(ops.every((o) => o.celda_m < 100 || o.recomendado)).toBe(true); // nunca más grande que la parcela
+    expect(opcionesTamano(ha1, 50).every((o) => o.filas <= 50 && o.columnas <= 50)).toBe(true);
+  });
+
+  it('1 ha en Jauja: chunk de 1 m remuestreado, chunk de 30 m con uso de suelo real; el área no cambia', async () => {
+    const { construirChunks, cuadrado } = await import('./parcela');
+    const { resumirResolucion, fidelidadChunk } = await import('./resolucion');
+    const grilla = (await fuente.grillaJunin()) as GrillaCapas;
+    const parcelas = await Promise.all(n.puntos.map((p) => fuente.parcela(p.id)));
+    // 1 ha dentro de la ventana de 30 m de Jauja (a 300 m del punto)
+    const anillo = cuadrado(-11.7723, -75.5027, 100);
+    const f = { grilla, parcelas, reglas: n.reglas };
+    const fino = construirChunks(anillo, f);
+    const grueso = construirChunks(anillo, f, 30);
+    expect(fino.celda_m).toBe(1);
+    expect(grueso.celda_m).toBe(30);
+    const area = (g: typeof fino) => g.chunks.reduce((s, c) => s + c.fraccion, 0) * g.celda_m ** 2;
+    expect(Math.abs(area(fino) - area(grueso)) / area(fino)).toBeLessThan(0.005);
+
+    const rf = resumirResolucion(fino, 2_500);
+    expect(rf.efectiva_m).toBe(30);
+    expect(rf.capa_efectiva).toBe('uso_suelo');
+    expect(rf.pct_remuestreado).toBe(100);
+    expect(rf.advertencias[0]).toMatch(/30 veces más finos/);
+    expect(rf.filas.find((x) => x.capa === 'clima')!.dominante).toBe('remuestreado');
+
+    const rg = resumirResolucion(grueso, 2_500);
+    expect(rg.filas.find((x) => x.capa === 'uso_suelo')!.dominante).toBe('real');
+    expect(rg.filas.find((x) => x.capa === 'suelo')!.dominante).toBe('remuestreado');
+    expect(rg.advertencias.some((a) => a.startsWith('Tus chunks'))).toBe(false);
+
+    const dentro = grueso.chunks.find((c) => c.dentro && c.estado !== 'sin_dato')!;
+    expect(fidelidadChunk(dentro, 30, 'uso_suelo')).toBe('real');
+    expect(fidelidadChunk(dentro, 30)).toBe('remuestreado'); // la más baja: suelo a 250 m
+  });
+
+  it('clima lejano (> 10 km) se marca extrapolado y lo dice', async () => {
+    const { construirChunks, cuadrado } = await import('./parcela');
+    const { resumirResolucion } = await import('./resolucion');
+    const grilla = (await fuente.grillaJunin()) as GrillaCapas;
+    const g = construirChunks(cuadrado(-11.6, -75.4, 200), { grilla, parcelas: [], reglas: n.reglas });
+    const r = resumirResolucion(g, 18_000);
+    expect(r.filas.find((x) => x.capa === 'clima')!.dominante).toBe('extrapolado');
+    expect(r.advertencias.join(' ')).toMatch(/extrapolado/);
+    // fuera de la ventana de 30 m todo viene de la grilla de ~1 km
+    expect(r.filas.find((x) => x.capa === 'uso_suelo')!.efectiva[0].res_m).toBe(1000);
+  });
+
+  it('el puente al 3D marca la fidelidad de cada celda visible', async () => {
+    const { construirChunks, cuadrado } = await import('./parcela');
+    const { parcelaParaSimulador } = await import('./puente');
+    const { container } = await import('@/app/container');
+    const grilla = (await fuente.grillaJunin()) as GrillaCapas;
+    const parcelas = await Promise.all(n.puntos.map((p) => fuente.parcela(p.id)));
+    const g = construirChunks(cuadrado(-12.0383, -75.3228, 90), { grilla, parcelas, reglas: n.reglas }, 30);
+    const p = parcelaParaSimulador(g, container.terrains.clases());
+    const visibles = p.tiles.filter((t) => !t.oculto && t.fidelidad);
+    expect(visibles.length).toBeGreaterThan(0);
+    expect(visibles.every((t) => t.fidelidad === 'remuestreado')).toBe(true); // suelo 250 m > 30 m
   });
 });

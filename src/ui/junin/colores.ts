@@ -1,7 +1,9 @@
 /** Colores y leyendas de las capas de chunks y de las capas NASA del geovisor. */
 import type { Chunk } from '@/domain/junin/parcela';
+import { fidelidadChunk, type CapaDato, type Fidelidad } from '@/domain/junin/resolucion';
 import type { CapaChunk, BaseNasa, OverlayNasa } from '@/store/juninStore';
 import { phColor, soilColor } from '@/theme/ramps';
+import { fidelidad as fidelidadTokens } from '@/theme/tokens';
 
 type Stop = [number, string];
 
@@ -47,6 +49,14 @@ export const COLOR_ESTADO = {
 } as const;
 const COLOR_SIN_DATO = '#9AA0A6';
 
+/** Fidelidad del dato en el chunk (Fase 2) */
+export const COLOR_FIDELIDAD: Record<Fidelidad, string> = fidelidadTokens;
+export const ETIQUETA_FIDELIDAD: Record<Fidelidad, string> = {
+  real: 'Real (dato ≥ chunk)',
+  remuestreado: 'Remuestreado (chunk < dato)',
+  extrapolado: 'Extrapolado (fuera del alcance)',
+};
+
 const RAMPA_ELEV: Stop[] = [
   [0, '#1A9850'],
   [0.5, '#FEE08B'],
@@ -75,6 +85,8 @@ export interface ContextoColor {
   elevMax: number;
   rendMax: number;
   rend?: (number | null)[];
+  /** Para la capa de fidelidad */
+  fid?: { celda: number; capa: CapaDato | 'peor'; distanciaClimaM?: number };
 }
 
 export function colorChunk(c: Chunk, i: number, capa: CapaChunk, ctx: ContextoColor): string | null {
@@ -82,6 +94,10 @@ export function colorChunk(c: Chunk, i: number, capa: CapaChunk, ctx: ContextoCo
   switch (capa) {
     case 'estado':
       return COLOR_ESTADO[c.estado];
+    case 'fidelidad': {
+      const f = ctx.fid && fidelidadChunk(c, ctx.fid.celda, ctx.fid.capa, ctx.fid.distanciaClimaM);
+      return f ? COLOR_FIDELIDAD[f] : null;
+    }
     case 'regla':
       if (c.estado === 'bloqueado') return COLOR_REGLA.bloqueado;
       return c.regla ? COLOR_REGLA[c.regla] : null;
@@ -108,6 +124,7 @@ export function colorChunk(c: Chunk, i: number, capa: CapaChunk, ctx: ContextoCo
 
 export const ETIQUETA_CAPA: Record<CapaChunk, string> = {
   estado: 'Datos',
+  fidelidad: 'Fidelidad',
   regla: 'Uso permitido',
   cobertura: 'Cobertura',
   elevacion: 'Altura',
@@ -127,6 +144,13 @@ export function leyendaCapa(capa: CapaChunk, ctx: ContextoColor, presentes: Chun
         [COLOR_ESTADO.interpolado, 'Dato a ~1 km'],
         [COLOR_ESTADO.sin_dato, 'Sin dato'],
         [COLOR_ESTADO.bloqueado, 'Bloqueado'],
+      ];
+    case 'fidelidad':
+      return [
+        ...(Object.keys(COLOR_FIDELIDAD) as Fidelidad[]).map(
+          (f) => [COLOR_FIDELIDAD[f], ETIQUETA_FIDELIDAD[f]] as [string, string],
+        ),
+        [COLOR_SIN_DATO, 'Sin dato'],
       ];
     case 'regla':
       return [

@@ -6,6 +6,8 @@ import { create } from 'zustand';
 import type { GeoJSON } from '@/data/junin/JuninDataSource';
 import type { EscenarioId, GrillaCapas, NucleoJunin, Parcela } from '@/data/junin/types';
 import type { Anillo, GrillaChunks, ResumenParcela } from '@/domain/junin/parcela';
+import type { CapaDato, ResumenResolucion } from '@/domain/junin/resolucion';
+import { limiteDispositivo, type LimiteDispositivo } from '@/data/junin/dispositivo';
 import type { ResultadoRendimiento } from '@/domain/junin/simulador';
 
 export type Modo = 'junin' | 'simulador';
@@ -13,7 +15,16 @@ export type Modo = 'junin' | 'simulador';
 export type BaseNasa = 'esri' | 'eox' | 'modis' | 'viirs' | 'hls';
 export type OverlayNasa = 'ndvi' | 'humedad' | 'lluvia' | 'etiquetas';
 export type CapaChunk =
-  'estado' | 'regla' | 'cobertura' | 'elevacion' | 'pendiente' | 'textura' | 'ph' | 'ndvi' | 'rendimiento';
+  | 'estado'
+  | 'fidelidad'
+  | 'regla'
+  | 'cobertura'
+  | 'elevacion'
+  | 'pendiente'
+  | 'textura'
+  | 'ph'
+  | 'ndvi'
+  | 'rendimiento';
 
 export interface PasoRotacion {
   campana: number;
@@ -70,6 +81,14 @@ export interface JuninState {
   /** Casas consultadas en vivo (OpenStreetMap); null mientras no se consulta */
   casas: EstadoCasas | null;
   capaChunk: CapaChunk;
+  /** Capa cuya fidelidad se pinta ('peor' = la más baja de uso de suelo, relieve y suelo) */
+  capaFidelidad: CapaDato | 'peor';
+  /** Tamaño de chunk elegido; null = automático (recomendado para este equipo) */
+  celdaElegida: number | null;
+  /** Límite de chunks por lado según el equipo */
+  limite: LimiteDispositivo;
+  /** Resolución efectiva de la parcela (Fase 2) */
+  resolucion: ResumenResolucion | null;
   escenario: EscenarioId;
   cultivo: string | null;
   anterior: string | null;
@@ -109,6 +128,10 @@ export const useJuninStore = create<JuninState>()(() => ({
   ubicacion: null,
   casas: null,
   capaChunk: 'regla',
+  capaFidelidad: 'peor',
+  celdaElegida: null,
+  limite: limiteDispositivo(),
+  resolucion: null,
   escenario: 'actual',
   cultivo: null,
   anterior: null,

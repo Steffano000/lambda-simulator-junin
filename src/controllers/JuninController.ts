@@ -10,6 +10,7 @@ import type { EscenarioId, Parcela } from '@/data/junin/types';
 import {
   aClimaMes,
   areaHa,
+  CAPAS,
   centroide,
   construirChunks,
   CULTIVO_SIMULADOR,
@@ -24,7 +25,10 @@ import {
   pisoEcologico,
   puntoMasCercano,
   resumirParcela,
+  resumirResolucion,
+  tamanoChunk,
   type Anillo,
+  type CapaDato,
   type ResultadoRendimiento,
 } from '@/domain/junin';
 import { SoilMix, TerrainProfile } from '@/domain/terrain';
@@ -136,6 +140,8 @@ export class JuninController {
       resumen: null,
       ubicacion: null,
       casas: null,
+      resolucion: null,
+      celdaElegida: null,
       area_ha: 0,
       plan: [],
       cultivo: null,
@@ -154,11 +160,32 @@ export class JuninController {
     return this.indiceProtegidas;
   }
 
-  /** Pasos 3 a 6: área, ubicación, uso de suelo (incluye casas y áreas protegidas) y chunks */
-  async procesar(anillo: Anillo): Promise<void> {
-    const { nucleo, grilla, parcelas, region } = get();
+  /** Cambia el tamaño de chunk (null = automático) y rearma la grilla de la misma parcela */
+  async setCelda(celda: number | null): Promise<void> {
+    const a = get().anillo;
+    if (a) await this.procesar(a, celda);
+  }
+  setCapaFidelidad(capaFidelidad: CapaDato | 'peor'): void {
+    set({ capaFidelidad, capaChunk: 'fidelidad' });
+  }
+
+  /**
+   * Pasos 3 a 6: área, ubicación, uso de suelo (incluye casas y áreas protegidas) y chunks.
+   * `celdaElegida`: tamaño de chunk elegido en el paso 3; null = automático para este equipo.
+   */
+  async procesar(anillo: Anillo, celdaElegida: number | null = null): Promise<void> {
+    const { nucleo, grilla, parcelas, region, limite } = get();
     if (!nucleo || !grilla) return;
-    set({ cargando: 'Analizando la parcela…', error: null, anillo, plan: [], anterior: null, campana: 0 });
+    const celda = celdaElegida ?? tamanoChunk(anillo, limite.maxLado);
+    set({
+      cargando: 'Analizando la parcela…',
+      error: null,
+      anillo,
+      celdaElegida,
+      plan: [],
+      anterior: null,
+      campana: 0,
+    });
     const area_ha = areaHa(anillo);
     const c = centroide(anillo);
     const fuera = region ? !enGeojson(c.lat, c.lon, region) : false;
@@ -168,12 +195,12 @@ export class JuninController {
     let chunks = null;
     if (get().servidor) {
       try {
-        chunks = await chunksDelServidor(anillo);
+        chunks = await chunksDelServidor(anillo, celda);
       } catch {
         set({ servidor: false });
       }
     }
-    chunks ??= construirChunks(anillo, { grilla, parcelas, reglas: nucleo.reglas });
+    chunks ??= construirChunks(anillo, { grilla, parcelas, reglas: nucleo.reglas }, celda);
     // Casas EN VIVO (OpenStreetMap). Si falla, se avisa en el panel; no se asume que no hay casas.
     set({ cargando: 'Buscando casas en OpenStreetMap…', casas: null });
     const casas = await casasEnVivo(chunks.bbox);
@@ -185,12 +212,15 @@ export class JuninController {
       casas: casas.casas,
     });
     const resumen = resumirParcela(chunks, nucleo.reglas);
+    const resolucion = resumirResolucion(chunks, distanciaClimaM);
     const elev = resumen.elevacion_media_m;
+    const capaPrevia = get().capaChunk;
     set({
       cargando: null,
       area_ha,
       chunks,
       resumen,
+      resolucion,
       ubicacion: {
         punto,
         distancia_km: distanciaKm(c.lat, c.lon, pp.lat, pp.lon),
@@ -207,7 +237,13 @@ export class JuninController {
         consultado: casas.consultado,
         contornos: casas.casas,
       },
-      capaChunk: resumen.puede_sembrar ? 'textura' : 'regla',
+      // al cambiar solo el tamaño de chunk se mantiene la capa que se estaba viendo
+      capaChunk:
+        celdaElegida != null && capaPrevia !== 'rendimiento'
+          ? capaPrevia
+          : resumen.puede_sembrar
+            ? 'textura'
+            : 'regla',
     });
   }
 
@@ -264,7 +300,7 @@ export class JuninController {
 
   /** Abre la parcela real en el simulador 3D con el escenario y el cultivo elegidos */
   abrirEn3D(): string | null {
-    const { chunks, nucleo, ubicacion, escenario, campana, cultivo } = get();
+    const { chunks, nucleo, ubicacion, escenario, campana, cultivo, resolucion } = get();
     if (!chunks || !nucleo || !ubicacion) return 'Primero dibuja una parcela.';
     const p = parcelaParaSimulador(chunks, container.terrains.clases());
     const terreno = new TerrainProfile(p.dominante, p.reaccion, p.config, SoilMix.de(p.mezcla), 'manchas');
@@ -308,6 +344,11 @@ export class JuninController {
         texto: `Parcela real de Junín cargada: chunks de ${chunks.celda_m} m (relieve ×3). Solo se dibuja tu polígono; ${p.celdasBloqueadas} celdas bloqueadas o sin dato quedan como losas planas y no aceptan acciones.`,
         detalle: [
           `Supuestos del simulador (no son datos medidos): P ${SUPUESTOS_SIMULADOR.p}, K ${SUPUESTOS_SIMULADOR.k} y humedad inicial ${SUPUESTOS_SIMULADOR.humedad} %.`,
+          ...(resolucion
+            ? [
+                `Resolución efectiva ${resolucion.efectiva_m} m (${CAPAS[resolucion.capa_efectiva].nombre.toLowerCase()}). La capa «Fidelidad» pinta la más baja de uso de suelo, relieve y suelo: ámbar = la celda hereda el dato de un píxel más grande.`,
+              ]
+            : []),
           ...(p.recorte ? ['La parcela era más grande que 100×100 chunks: se recortó.'] : []),
         ],
       },
