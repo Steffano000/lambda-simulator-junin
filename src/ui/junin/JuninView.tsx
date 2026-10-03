@@ -21,8 +21,8 @@ export function JuninView() {
         </h1>
         <ModoSwitch />
         <span className="ml-auto hidden text-2xs text-ui-ink-muted md:block">
-          Mapa: NASA GIBS en vivo · Cálculos: datos locales validados (ERA5-Land + PISCO, SoilGrids, DRA,
-          FAO-56, AquaCrop)
+          Mapa: satélite HD para dibujar + NASA GIBS en vivo · Cálculos: datos locales validados (ERA5-Land +
+          PISCO, SoilGrids, DRA, FAO-56, AquaCrop)
         </span>
       </header>
       <div className="flex min-h-0 flex-1">

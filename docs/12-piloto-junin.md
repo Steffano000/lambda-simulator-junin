@@ -36,6 +36,10 @@ Lo que se **ve** viene de NASA en vivo (GIBS). Lo que se **calcula** sale de `pu
 
 Cada bloque es un chunk. Las celdas fuera del polígono o con cobertura bloqueada salen en gris/azul y no aceptan acciones ni siembra (`TileNode.bloqueado`). El clima de la campaña entra como escenario «Junín · punto · escenario (mes a mes)» y el mes de inicio es el de siembra.
 
+## Imágenes para dibujar (alta resolución)
+
+Por defecto el mapa usa **Satélite HD** (Esri World Imagery, ~1 m, nítido hasta el zoom 17) para ver los predios y dibujar la parcela. También está **Sentinel-2 sin nubes 2023** (EOX, 10 m). Son solo referencia visual: no entran en los cálculos. Sobre ellas, «Nombres y vías» usa las capas de referencia de Esri.
+
 ## Capas NASA (comprobadas en GIBS el 3 de octubre de 2026)
 
 | Capa         | Identificador GIBS                           | Nivel | Nota                                       |

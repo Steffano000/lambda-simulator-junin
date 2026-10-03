@@ -17,7 +17,15 @@ import {
   PENALIZACION_ADVERTENCIA,
 } from '@/domain/junin';
 import { useJuninStore, type BaseNasa, type CapaChunk, type OverlayNasa } from '@/store/juninStore';
-import { BASES_NASA, COLOR_REGLA, ETIQUETA_CAPA, leyendaCapa, OVERLAYS_NASA } from './colores';
+import {
+  BASES_HD,
+  BASES_NASA,
+  COLOR_REGLA,
+  ETIQUETA_CAPA,
+  leyendaCapa,
+  NOMBRE_BASE,
+  OVERLAYS_NASA,
+} from './colores';
 import { GraficoEscenario } from './GraficoEscenario';
 import { useResultadoJunin } from './useJunin';
 
@@ -133,16 +141,30 @@ export function PanelJunin() {
       )}
       {s.error && <div className="bg-red-50 px-4 py-1 text-ui-danger">{s.error}</div>}
 
-      <Paso n={1} titulo="Mapa (NASA en vivo)">
+      <Paso n={1} titulo="Mapa">
+        <div className="mb-1 text-2xs text-ui-ink-muted">Para dibujar (alta resolución)</div>
+        <div className="mb-2 grid grid-cols-2 gap-1">
+          {(['esri', 'eox'] as BaseNasa[]).map((b) => (
+            <button
+              key={b}
+              className={`btn justify-center ${s.base === b ? 'btn-active' : ''}`}
+              onClick={() => jc.setBase(b)}
+              title={BASES_HD[b as 'esri' | 'eox'].nombre}
+            >
+              {NOMBRE_BASE[b]}
+            </button>
+          ))}
+        </div>
+        <div className="mb-1 text-2xs text-ui-ink-muted">Imagen NASA del día (contexto)</div>
         <div className="mb-2 grid grid-cols-3 gap-1">
           {(Object.keys(BASES_NASA) as BaseNasa[]).map((b) => (
             <button
               key={b}
               className={`btn justify-center ${s.base === b ? 'btn-active' : ''}`}
               onClick={() => jc.setBase(b)}
-              title={BASES_NASA[b].nombre}
+              title={BASES_NASA[b as 'modis' | 'viirs' | 'hls'].nombre}
             >
-              {b.toUpperCase()}
+              {NOMBRE_BASE[b]}
             </button>
           ))}
         </div>
@@ -163,7 +185,9 @@ export function PanelJunin() {
           </button>
         </label>
         <p className="mb-2 text-2xs text-ui-ink-muted">
-          MODIS y VIIRS pasan una vez al día y a veces hay nubes o franjas sin imagen: cambia de día con ◀ ▶.
+          La fecha aplica a las imágenes y capas NASA. MODIS y VIIRS pasan una vez al día y a veces hay nubes
+          o franjas sin imagen: cambia de día con ◀ ▶. Acerca el mapa con «Satélite HD» para ver bien los
+          predios.
         </p>
         <div className="grid grid-cols-2 gap-1">
           {(Object.keys(OVERLAYS_NASA) as OverlayNasa[]).map((o) => (
@@ -178,7 +202,8 @@ export function PanelJunin() {
           </label>
         </div>
         <p className="mt-2 text-2xs text-ui-ink-muted">
-          Imagen NASA (contexto, sin corrección local). No entra en los cálculos.
+          Las imágenes son solo para ver y dibujar: no entran en los cálculos. Las capas NASA son contexto,
+          sin corrección local.
         </p>
       </Paso>
 

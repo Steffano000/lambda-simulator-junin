@@ -179,7 +179,55 @@ export interface CapaGibs {
   periodo16?: boolean;
 }
 
-export const BASES_NASA: Record<BaseNasa, CapaGibs> = {
+// ---------------------------------------------------------------------------
+// Imágenes de alta resolución para DIBUJAR la parcela (no entran en los cálculos)
+// ---------------------------------------------------------------------------
+export interface CapaFija {
+  nombre: string;
+  corto: string;
+  url: string;
+  /** Último zoom con imagen propia (más allá se amplía) */
+  maxNativo: number;
+  atribucion: string;
+}
+
+const ESRI = 'https://server.arcgisonline.com/ArcGIS/rest/services';
+
+export const BASES_HD: Record<'esri' | 'eox', CapaFija> = {
+  esri: {
+    nombre: 'Satélite HD (Esri World Imagery, ~1 m)',
+    corto: 'Satélite HD',
+    url: `${ESRI}/World_Imagery/MapServer/tile/{z}/{y}/{x}`,
+    // En Junín Esri tiene imagen hasta el zoom 17; en 18-19 devuelve "no disponible"
+    maxNativo: 17,
+    atribucion: 'Imagen © Esri, Maxar, Earthstar Geographics y la comunidad de usuarios GIS',
+  },
+  eox: {
+    nombre: 'Sentinel-2 sin nubes 2023 (EOX, 10 m)',
+    corto: 'Sentinel-2',
+    url: 'https://tiles.maps.eox.at/wmts/1.0.0/s2cloudless-2023_3857/default/g/{z}/{y}/{x}.jpg',
+    maxNativo: 15,
+    atribucion: 'Sentinel-2 cloudless 2023 © EOX IT Services GmbH (datos Copernicus Sentinel modificados)',
+  },
+};
+
+/** Nombres y vías nítidos para las imágenes HD */
+export const ETIQUETAS_HD = [
+  `${ESRI}/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}`,
+  `${ESRI}/Reference/World_Transportation/MapServer/tile/{z}/{y}/{x}`,
+];
+
+export const esBaseHD = (b: BaseNasa): b is 'esri' | 'eox' => b === 'esri' || b === 'eox';
+
+export const NOMBRE_BASE: Record<BaseNasa, string> = {
+  esri: 'Satélite HD',
+  eox: 'Sentinel-2',
+  modis: 'MODIS',
+  viirs: 'VIIRS',
+  hls: 'HLS 30 m',
+};
+
+export const BASES_NASA: Record<'modis' | 'viirs' | 'hls', CapaGibs> = {
   modis: {
     id: 'MODIS_Terra_CorrectedReflectance_TrueColor',
     nombre: 'MODIS Terra · color verdadero (250 m)',
@@ -225,7 +273,7 @@ export const OVERLAYS_NASA: Record<OverlayNasa, CapaGibs> = {
   etiquetas: {
     // Reference_Labels_15m devuelve teselas negras opacas (comprobado el 3-oct-2026): se usa la de 9 niveles
     id: 'Reference_Labels',
-    nombre: 'Nombres (referencia NASA)',
+    nombre: 'Nombres y vías',
     nivel: 9,
     ext: 'png',
     sinFecha: true,

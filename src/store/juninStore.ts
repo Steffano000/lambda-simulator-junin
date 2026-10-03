@@ -9,7 +9,8 @@ import type { Anillo, GrillaChunks, ResumenParcela } from '@/domain/junin/parcel
 import type { ResultadoRendimiento } from '@/domain/junin/simulador';
 
 export type Modo = 'junin' | 'simulador';
-export type BaseNasa = 'modis' | 'viirs' | 'hls';
+/** Imagen de fondo: alta resolución para dibujar (esri, eox) o NASA del día (modis, viirs, hls) */
+export type BaseNasa = 'esri' | 'eox' | 'modis' | 'viirs' | 'hls';
 export type OverlayNasa = 'ndvi' | 'humedad' | 'lluvia' | 'etiquetas';
 export type CapaChunk =
   'regla' | 'cobertura' | 'elevacion' | 'pendiente' | 'textura' | 'ph' | 'ndvi' | 'rendimiento';
@@ -84,7 +85,7 @@ export const useJuninStore = create<JuninState>()(() => ({
   provincias: null,
   protegidas: null,
   fecha: ayer(),
-  base: 'modis',
+  base: 'esri',
   overlays: { ndvi: false, humedad: false, lluvia: false, etiquetas: true },
   verProtegidas: false,
   avisoTeselas: null,

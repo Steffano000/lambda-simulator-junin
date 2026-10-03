@@ -10,10 +10,20 @@ import { useShallow } from 'zustand/react/shallow';
 import { juninController } from '@/controllers/JuninController';
 import { cuadrado, ETIQUETA_MAPA_NASA, terrenoEnPunto, type Chunk } from '@/domain/junin';
 import { useJuninStore, type OverlayNasa } from '@/store/juninStore';
-import { BASES_NASA, colorChunk, OVERLAYS_NASA, urlGibs, type CapaGibs } from './colores';
+import {
+  BASES_HD,
+  BASES_NASA,
+  colorChunk,
+  esBaseHD,
+  ETIQUETAS_HD,
+  OVERLAYS_NASA,
+  urlGibs,
+  type CapaGibs,
+} from './colores';
 import { useResultadoJunin } from './useJunin';
 
 const JUNIN_BOUNDS = L.latLngBounds([-12.9, -76.8], [-10.4, -73.1]);
+const ZOOM_MAX = 18;
 
 export function MapaJunin() {
   const div = useRef<HTMLDivElement>(null);
@@ -21,7 +31,7 @@ export function MapaJunin() {
   const capas = useRef<{
     base?: L.TileLayer;
     baseHls?: L.TileLayer;
-    overlays: Partial<Record<string, L.TileLayer>>;
+    overlays: Partial<Record<string, L.Layer>>;
     fijo?: L.LayerGroup;
     protegidas?: L.GeoJSON;
     dibujo?: L.LayerGroup;
@@ -61,7 +71,7 @@ export function MapaJunin() {
       center: [-11.9, -75.2],
       zoom: 8,
       minZoom: 7,
-      maxZoom: 16,
+      maxZoom: ZOOM_MAX,
       maxBounds: JUNIN_BOUNDS.pad(0.3),
       zoomSnap: 0.5,
       preferCanvas: true,
@@ -77,17 +87,31 @@ export function MapaJunin() {
     };
   }, []);
 
-  // Imagen base NASA (HLS va encima de MODIS: solo cubre donde hubo pasada ese día)
+  // Imagen de fondo: alta resolución para dibujar (Esri / EOX) o NASA del día.
+  // HLS va encima de MODIS: solo cubre donde hubo pasada ese día.
   useEffect(() => {
     const m = mapa.current;
     if (!m) return;
     capas.current.base?.remove();
     capas.current.baseHls?.remove();
+    juninController.avisarTeselas(null);
+    if (esBaseHD(s.base)) {
+      const c = BASES_HD[s.base];
+      const t = L.tileLayer(c.url, {
+        maxNativeZoom: c.maxNativo,
+        maxZoom: ZOOM_MAX,
+        attribution: c.atribucion,
+      });
+      t.addTo(m);
+      t.bringToBack();
+      capas.current.base = t;
+      return;
+    }
     const crear = (c: CapaGibs) => {
       let errores = 0;
       const t = L.tileLayer(urlGibs(c, s.fecha), {
         maxNativeZoom: c.nivel,
-        maxZoom: 16,
+        maxZoom: ZOOM_MAX,
         bounds: JUNIN_BOUNDS.pad(0.3),
       });
       t.on('tileerror', () => {
@@ -111,7 +135,7 @@ export function MapaJunin() {
     }
   }, [s.base, s.fecha]);
 
-  // Capas NASA superpuestas
+  // Capas NASA superpuestas (los nombres usan Esri sobre las imágenes HD: son más nítidos)
   useEffect(() => {
     const m = mapa.current;
     if (!m) return;
@@ -119,16 +143,24 @@ export function MapaJunin() {
       capas.current.overlays[k]?.remove();
       delete capas.current.overlays[k];
       if (!s.overlays[k as OverlayNasa]) continue;
+      if (k === 'etiquetas' && esBaseHD(s.base)) {
+        const g = L.layerGroup(
+          ETIQUETAS_HD.map((u) => L.tileLayer(u, { maxNativeZoom: 17, maxZoom: ZOOM_MAX })),
+        );
+        g.addTo(m);
+        capas.current.overlays[k] = g;
+        continue;
+      }
       const t = L.tileLayer(urlGibs(c, s.fecha), {
         maxNativeZoom: c.nivel,
-        maxZoom: 16,
+        maxZoom: ZOOM_MAX,
         opacity: k === 'etiquetas' ? 1 : 0.7,
         bounds: JUNIN_BOUNDS.pad(0.3),
       });
       t.addTo(m);
       capas.current.overlays[k] = t;
     }
-  }, [s.overlays, s.fecha]);
+  }, [s.overlays, s.fecha, s.base]);
 
   // Encuadre: oscurece fuera de Junín, provincias, puntos y ventanas de 30 m
   useEffect(() => {
@@ -305,7 +337,7 @@ export function MapaJunin() {
           renderer,
           stroke: false,
           fillColor: color ?? '#777',
-          fillOpacity: color ? 0.75 : 0.25,
+          fillOpacity: color ? 0.55 : 0.2,
           interactive: false,
         },
       ).addTo(cg);
@@ -349,7 +381,9 @@ export function MapaJunin() {
     <div className="relative h-full w-full">
       <div ref={div} className="h-full w-full bg-[#0b1320]" />
       <div className="pointer-events-none absolute top-2 left-14 z-[500] rounded bg-black/65 px-2 py-1 text-2xs text-white">
-        {ETIQUETA_MAPA_NASA} · {BASES_NASA[s.base].nombre} · {s.fecha}
+        {esBaseHD(s.base)
+          ? `Imagen de referencia para dibujar (no entra en los cálculos) · ${BASES_HD[s.base].nombre}`
+          : `${ETIQUETA_MAPA_NASA} · ${BASES_NASA[s.base].nombre} · ${s.fecha}`}
       </div>
       {s.dibujando && (
         <div className="absolute top-10 left-14 z-[500] rounded bg-yellow-300 px-2 py-1 text-xs text-black shadow">
