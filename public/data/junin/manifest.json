@@ -1,0 +1,470 @@
+{
+ "nombre": "Datos ambientales de Junín para Lambda Simulator (versión mejorada)",
+ "generado": "2026-10-02T21:24:07",
+ "generador": "pipeline/codigos/17_exportar_json.py",
+ "reglas": [
+  "Todo es JSON válido para JavaScript: NaN e Infinity se guardan como null.",
+  "La lluvia es siempre la corregida con PISCOp v3.0; la lluvia cruda de ERA5-Land no se exporta.",
+  "Las grillas son arreglos planos fila por fila de norte a sur; si una capa trae 'escala', valor = dato / escala.",
+  "uso = app (lo lee el simulador), analisis (gráficos y regenerar modelos), validacion (tesis), meta (procedencia)."
+ ],
+ "puntos": [
+  "huayao_igp",
+  "huancayo",
+  "concepcion",
+  "chupaca",
+  "jauja",
+  "tarma",
+  "junin",
+  "la_oroya",
+  "la_merced",
+  "satipo"
+ ],
+ "total_mb": 45.78,
+ "archivos": [
+  {
+   "archivo": "app/aquacrop_resumen.json",
+   "bytes": 26573,
+   "descripcion": "Rendimiento AquaCrop (papa, quinua, cebada) por punto y escenario; anomalía sobre DRA",
+   "fuente": "Paso 15 (AquaCrop-OSPy)",
+   "uso": "app"
+  },
+  {
+   "archivo": "app/catalogo_cultivos_junin.json",
+   "bytes": 68955,
+   "descripcion": "Catálogo de cultivos por provincia y piso ecológico: rendimiento, precio y requerimientos EcoCrop",
+   "fuente": "Paso 12 (DRA Junín 2022 + FAO EcoCrop)",
+   "uso": "app"
+  },
+  {
+   "archivo": "app/fenologia_cultivos.json",
+   "bytes": 10534,
+   "descripcion": "Fases, Kc, sensibilidad al agua y efectos de rotación de 5 cultivos",
+   "fuente": "Equipo (FAO-56, SENAMHI, INIA)",
+   "uso": "app"
+  },
+  {
+   "archivo": "app/puntos.json",
+   "bytes": 2602,
+   "descripcion": "Los 10 puntos con datos: coordenadas, elevación, provincia, piso ecológico y suelo",
+   "fuente": "config.py + SRTM + SoilGrids",
+   "uso": "app"
+  },
+  {
+   "archivo": "app/reglas_uso_suelo.json",
+   "bytes": 2282,
+   "descripcion": "Qué cobertura WorldCover permite, advierte o bloquea la siembra",
+   "fuente": "Paso 10",
+   "uso": "app"
+  },
+  {
+   "archivo": "app/simulador_escenarios.json",
+   "bytes": 865604,
+   "descripcion": "Clima pronosticado a 24 meses, indicadores hídricos y rendimiento por cultivo, por punto y escenario",
+   "fuente": "Pasos 13-14 (SARIMAX + balance FAO-56)",
+   "uso": "app"
+  },
+  {
+   "archivo": "clima/clima_mensual_puntos.json",
+   "bytes": 809866,
+   "descripcion": "Clima mensual 1950-2026 en los puntos (ET0, lluvia corregida, Tmed, Tmin)",
+   "fuente": "ERA5-Land + PISCO (paso 08)",
+   "uso": "analisis"
+  },
+  {
+   "archivo": "clima/diario/chupaca.json",
+   "bytes": 2485092,
+   "descripcion": "Serie diaria 1950-2026 en chupaca: ERA5-Land, ET0, viento horario y SMAP",
+   "fuente": "ERA5-Land, SMAP, FAO-56",
+   "uso": "analisis"
+  },
+  {
+   "archivo": "clima/diario/concepcion.json",
+   "bytes": 2488050,
+   "descripcion": "Serie diaria 1950-2026 en concepcion: ERA5-Land, ET0, viento horario y SMAP",
+   "fuente": "ERA5-Land, SMAP, FAO-56",
+   "uso": "analisis"
+  },
+  {
+   "archivo": "clima/diario/huancayo.json",
+   "bytes": 2483028,
+   "descripcion": "Serie diaria 1950-2026 en huancayo: ERA5-Land, ET0, viento horario y SMAP",
+   "fuente": "ERA5-Land, SMAP, FAO-56",
+   "uso": "analisis"
+  },
+  {
+   "archivo": "clima/diario/huayao_igp.json",
+   "bytes": 2492684,
+   "descripcion": "Serie diaria 1950-2026 en huayao_igp: ERA5-Land, ET0, viento horario y SMAP",
+   "fuente": "ERA5-Land, SMAP, FAO-56",
+   "uso": "analisis"
+  },
+  {
+   "archivo": "clima/diario/jauja.json",
+   "bytes": 2484825,
+   "descripcion": "Serie diaria 1950-2026 en jauja: ERA5-Land, ET0, viento horario y SMAP",
+   "fuente": "ERA5-Land, SMAP, FAO-56",
+   "uso": "analisis"
+  },
+  {
+   "archivo": "clima/diario/junin.json",
+   "bytes": 2485389,
+   "descripcion": "Serie diaria 1950-2026 en junin: ERA5-Land, ET0, viento horario y SMAP",
+   "fuente": "ERA5-Land, SMAP, FAO-56",
+   "uso": "analisis"
+  },
+  {
+   "archivo": "clima/diario/la_merced.json",
+   "bytes": 2564268,
+   "descripcion": "Serie diaria 1950-2026 en la_merced: ERA5-Land, ET0, viento horario y SMAP",
+   "fuente": "ERA5-Land, SMAP, FAO-56",
+   "uso": "analisis"
+  },
+  {
+   "archivo": "clima/diario/la_oroya.json",
+   "bytes": 2485673,
+   "descripcion": "Serie diaria 1950-2026 en la_oroya: ERA5-Land, ET0, viento horario y SMAP",
+   "fuente": "ERA5-Land, SMAP, FAO-56",
+   "uso": "analisis"
+  },
+  {
+   "archivo": "clima/diario/satipo.json",
+   "bytes": 2576821,
+   "descripcion": "Serie diaria 1950-2026 en satipo: ERA5-Land, ET0, viento horario y SMAP",
+   "fuente": "ERA5-Land, SMAP, FAO-56",
+   "uso": "analisis"
+  },
+  {
+   "archivo": "clima/diario/tarma.json",
+   "bytes": 2481281,
+   "descripcion": "Serie diaria 1950-2026 en tarma: ERA5-Land, ET0, viento horario y SMAP",
+   "fuente": "ERA5-Land, SMAP, FAO-56",
+   "uso": "analisis"
+  },
+  {
+   "archivo": "clima/era5land_climatologia_1991_2020.json",
+   "bytes": 402468,
+   "descripcion": "Climatología mensual 1991-2020 en grilla de 0.1° (lluvia corregida, temperaturas, radiación, viento, humedad)",
+   "fuente": "ERA5-Land (ECMWF) + PISCO",
+   "uso": "app"
+  },
+  {
+   "archivo": "clima/era5land_lluvia_mensual_1991_2026.json",
+   "bytes": 1565846,
+   "descripcion": "Lluvia mensual corregida 1991-2026 en grilla de 0.1° (solo meses completos)",
+   "fuente": "ERA5-Land + PISCO",
+   "uso": "analisis"
+  },
+  {
+   "archivo": "cultivos/aptitud_puntos.json",
+   "bytes": 89966,
+   "descripcion": "Aptitud EcoCrop (0-1) de cada cultivo en cada punto",
+   "fuente": "Paso 12",
+   "uso": "app"
+  },
+  {
+   "archivo": "cultivos/produccion_2022_provincias.json",
+   "bytes": 61192,
+   "descripcion": "Producción agrícola 2022 por provincia y cultivo DRA",
+   "fuente": "DRA Junín (paso 11)",
+   "uso": "analisis"
+  },
+  {
+   "archivo": "cultivos/validacion_aptitud.json",
+   "bytes": 1927,
+   "descripcion": "Validación de la aptitud EcoCrop contra lo que se siembra",
+   "fuente": "Paso 12",
+   "uso": "validacion"
+  },
+  {
+   "archivo": "enso/enso_mensual.json",
+   "bytes": 84622,
+   "descripcion": "Índice ENSO mensual (TSM, anomalía 1991-2020 y media móvil de 3 meses)",
+   "fuente": "NOAA OISST v2.1 (paso 07)",
+   "uso": "analisis"
+  },
+  {
+   "archivo": "enso/tsm_diaria.json",
+   "bytes": 225450,
+   "descripcion": "TSM diaria en Niño 1+2 y Niño 3.4",
+   "fuente": "NOAA OISST v2.1",
+   "uso": "analisis"
+  },
+  {
+   "archivo": "grillas/junin_1km.json",
+   "bytes": 4409391,
+   "descripcion": "Rejilla de Junín a ~1 km: elevación, pendiente, 8 propiedades del suelo, textura, WorldCover y NDVI",
+   "fuente": "SRTM, SoilGrids, ESA WorldCover, Sentinel-2",
+   "uso": "app"
+  },
+  {
+   "archivo": "grillas/ndvi_climatologia_2km.json",
+   "bytes": 857546,
+   "descripcion": "NDVI promedio por mes del año a ~2 km",
+   "fuente": "Sentinel-2 SR (ESA)",
+   "uso": "app"
+  },
+  {
+   "archivo": "grillas/suelo_profundidades_2km.json",
+   "bytes": 3734352,
+   "descripcion": "Suelo por profundidad a ~2 km (8 propiedades x 3 profundidades)",
+   "fuente": "SoilGrids 250 m (ISRIC)",
+   "uso": "analisis"
+  },
+  {
+   "archivo": "humedad/smap_mensual.json",
+   "bytes": 804800,
+   "descripcion": "Humedad del suelo SMAP: media mensual 2015-2026 en grilla de 9 km",
+   "fuente": "NASA SMAP L3 Enhanced",
+   "uso": "app"
+  },
+  {
+   "archivo": "limites/junin_provincias.geojson",
+   "bytes": 146912,
+   "descripcion": "Límites de las 9 provincias",
+   "fuente": "FAO GAUL 2015 / WDPA",
+   "uso": "app"
+  },
+  {
+   "archivo": "limites/junin_region.geojson",
+   "bytes": 55439,
+   "descripcion": "Límite de la región Junín",
+   "fuente": "FAO GAUL 2015 / WDPA",
+   "uso": "app"
+  },
+  {
+   "archivo": "limites/puntos_interes.geojson",
+   "bytes": 1451,
+   "descripcion": "Puntos con datos",
+   "fuente": "FAO GAUL 2015 / WDPA",
+   "uso": "app"
+  },
+  {
+   "archivo": "limites/puntos_interes.json",
+   "bytes": 672,
+   "descripcion": "Puntos con datos y su elevación",
+   "fuente": "Paso 01",
+   "uso": "app"
+  },
+  {
+   "archivo": "meta/registro_descargas.json",
+   "bytes": 152470,
+   "descripcion": "Registro de cada descarga (fecha, script, estado)",
+   "fuente": "Pasos 01-15",
+   "uso": "meta"
+  },
+  {
+   "archivo": "ndvi/ndvi_series_puntos.json",
+   "bytes": 18813,
+   "descripcion": "NDVI mensual 2017-2026 en los 10 puntos",
+   "fuente": "Sentinel-2 SR (ESA)",
+   "uso": "validacion"
+  },
+  {
+   "archivo": "parcelas/chupaca.json",
+   "bytes": 173524,
+   "descripcion": "Parcela real de 1.2 x 1.2 km (40 x 40 celdas de 30 m) en chupaca",
+   "fuente": "SRTM, SoilGrids, ESA WorldCover, Sentinel-2",
+   "uso": "app"
+  },
+  {
+   "archivo": "parcelas/concepcion.json",
+   "bytes": 164352,
+   "descripcion": "Parcela real de 1.2 x 1.2 km (40 x 40 celdas de 30 m) en concepcion",
+   "fuente": "SRTM, SoilGrids, ESA WorldCover, Sentinel-2",
+   "uso": "app"
+  },
+  {
+   "archivo": "parcelas/huancayo.json",
+   "bytes": 141884,
+   "descripcion": "Parcela real de 1.2 x 1.2 km (40 x 40 celdas de 30 m) en huancayo",
+   "fuente": "SRTM, SoilGrids, ESA WorldCover, Sentinel-2",
+   "uso": "app"
+  },
+  {
+   "archivo": "parcelas/huayao_igp.json",
+   "bytes": 192802,
+   "descripcion": "Parcela real de 1.2 x 1.2 km (40 x 40 celdas de 30 m) en huayao_igp",
+   "fuente": "SRTM, SoilGrids, ESA WorldCover, Sentinel-2",
+   "uso": "app"
+  },
+  {
+   "archivo": "parcelas/jauja.json",
+   "bytes": 142021,
+   "descripcion": "Parcela real de 1.2 x 1.2 km (40 x 40 celdas de 30 m) en jauja",
+   "fuente": "SRTM, SoilGrids, ESA WorldCover, Sentinel-2",
+   "uso": "app"
+  },
+  {
+   "archivo": "parcelas/junin.json",
+   "bytes": 143997,
+   "descripcion": "Parcela real de 1.2 x 1.2 km (40 x 40 celdas de 30 m) en junin",
+   "fuente": "SRTM, SoilGrids, ESA WorldCover, Sentinel-2",
+   "uso": "app"
+  },
+  {
+   "archivo": "parcelas/la_merced.json",
+   "bytes": 174538,
+   "descripcion": "Parcela real de 1.2 x 1.2 km (40 x 40 celdas de 30 m) en la_merced",
+   "fuente": "SRTM, SoilGrids, ESA WorldCover, Sentinel-2",
+   "uso": "app"
+  },
+  {
+   "archivo": "parcelas/la_oroya.json",
+   "bytes": 163048,
+   "descripcion": "Parcela real de 1.2 x 1.2 km (40 x 40 celdas de 30 m) en la_oroya",
+   "fuente": "SRTM, SoilGrids, ESA WorldCover, Sentinel-2",
+   "uso": "app"
+  },
+  {
+   "archivo": "parcelas/satipo.json",
+   "bytes": 149578,
+   "descripcion": "Parcela real de 1.2 x 1.2 km (40 x 40 celdas de 30 m) en satipo",
+   "fuente": "SRTM, SoilGrids, ESA WorldCover, Sentinel-2",
+   "uso": "app"
+  },
+  {
+   "archivo": "parcelas/tarma.json",
+   "bytes": 161285,
+   "descripcion": "Parcela real de 1.2 x 1.2 km (40 x 40 celdas de 30 m) en tarma",
+   "fuente": "SRTM, SoilGrids, ESA WorldCover, Sentinel-2",
+   "uso": "app"
+  },
+  {
+   "archivo": "pisco/comparacion_mensual_puntos.json",
+   "bytes": 503253,
+   "descripcion": "Lluvia mensual PISCO vs ERA5-Land cruda y corregida en los puntos",
+   "fuente": "Paso 09",
+   "uso": "validacion"
+  },
+  {
+   "archivo": "pisco/factores_correccion.json",
+   "bytes": 47435,
+   "descripcion": "Factores de corrección de lluvia por mes y celda",
+   "fuente": "PISCOp v3.0 (paso 09)",
+   "uso": "analisis"
+  },
+  {
+   "archivo": "pisco/piscop_mensual_1981_2025.json",
+   "bytes": 1991581,
+   "descripcion": "Lluvia mensual PISCOp v3.0 1981-2025 (0.1°, recorte de Junín)",
+   "fuente": "SENAMHI PISCOp v3.0",
+   "uso": "validacion"
+  },
+  {
+   "archivo": "pisco/validacion.json",
+   "bytes": 2569,
+   "descripcion": "Validación de la corrección de lluvia 2011-2025 (sesgo, RMSE, r, NSE)",
+   "fuente": "Paso 09",
+   "uso": "validacion"
+  },
+  {
+   "archivo": "pronostico/aquacrop_escenarios.json",
+   "bytes": 42166,
+   "descripcion": "AquaCrop por escenario: rendimiento seco, anomalía y rendimiento esperado",
+   "fuente": "Paso 15",
+   "uso": "analisis"
+  },
+  {
+   "archivo": "pronostico/aquacrop_historico.json",
+   "bytes": 82459,
+   "descripcion": "AquaCrop histórico por campaña",
+   "fuente": "Paso 15",
+   "uso": "validacion"
+  },
+  {
+   "archivo": "pronostico/balance_hidrico.json",
+   "bytes": 690265,
+   "descripcion": "Balance hídrico mensual por punto y escenario: P-ET0, P/ET0 y Kc, ETc, ETa, Ks por cultivo",
+   "fuente": "Paso 14",
+   "uso": "analisis"
+  },
+  {
+   "archivo": "pronostico/campanas_resumen.json",
+   "bytes": 147524,
+   "descripcion": "Resumen por campaña: lluvia, ETc, ETa, factor de agua y rendimiento",
+   "fuente": "Paso 14",
+   "uso": "analisis"
+  },
+  {
+   "archivo": "pronostico/escenarios_enso.json",
+   "bytes": 7593,
+   "descripcion": "Anomalías Niño 1+2 y 3.4 supuestas en cada escenario",
+   "fuente": "Paso 13",
+   "uso": "analisis"
+  },
+  {
+   "archivo": "pronostico/modelos_elegidos.json",
+   "bytes": 9369,
+   "descripcion": "Orden SARIMAX elegido por punto y variable",
+   "fuente": "Paso 13",
+   "uso": "validacion"
+  },
+  {
+   "archivo": "pronostico/pronostico_escenarios.json",
+   "bytes": 495708,
+   "descripcion": "Pronóstico por escenario en formato JSON del paso 13",
+   "fuente": "Paso 13",
+   "uso": "analisis"
+  },
+  {
+   "archivo": "pronostico/pronostico_puntos.json",
+   "bytes": 613443,
+   "descripcion": "Pronóstico SARIMAX mensual (media e intervalo del 80 %) por punto, escenario y variable",
+   "fuente": "Paso 13",
+   "uso": "analisis"
+  },
+  {
+   "archivo": "pronostico/validacion_backtest.json",
+   "bytes": 10456,
+   "descripcion": "Validación de 60 meses: RMSE, NSE y mejora sobre la climatología",
+   "fuente": "Paso 13",
+   "uso": "validacion"
+  },
+  {
+   "archivo": "uso_suelo/areas_protegidas_junin.geojson",
+   "bytes": 95165,
+   "descripcion": "Áreas naturales protegidas (WDPA)",
+   "fuente": "FAO GAUL 2015 / WDPA",
+   "uso": "app"
+  },
+  {
+   "archivo": "uso_suelo/hectareas_por_provincia.json",
+   "bytes": 2902,
+   "descripcion": "Hectáreas de cada cobertura WorldCover por provincia",
+   "fuente": "Paso 10",
+   "uso": "analisis"
+  }
+ ],
+ "avisos": [],
+ "no_convertidos": [
+  {
+   "origen": "datos/cultivos/fuentes_dra_junin/*.pdf",
+   "motivo": "Documentos fuente; sus cifras ya están en cultivos/produccion_2022_provincias.json y app/catalogo_cultivos_junin.json"
+  },
+  {
+   "origen": "datos/clima_era5land/grillas_junin/precip_m",
+   "motivo": "Lluvia cruda de ERA5-Land (sobreestima ~2x); se usa precip_corr_mm"
+  },
+  {
+   "origen": "datos/clima_era5land/grillas_junin/* (diario)",
+   "motivo": "~640 MB de mapas diarios; se exportan la climatología 1991-2020 y la lluvia mensual"
+  },
+  {
+   "origen": "datos/humedad_smap/grillas_junin (diario)",
+   "motivo": "Se exportan medias mensuales; la serie diaria de los puntos está en clima/diario"
+  },
+  {
+   "origen": "datos/uso_suelo/dynamicworld_2026_30m_junin__p00__p10.tif",
+   "motivo": "Descarga parcial (una sola tesela del sur-oeste); usar WorldCover"
+  },
+  {
+   "origen": "datos/ndvi_sentinel2/*.tif (mensual 250 m)",
+   "motivo": "Se exportan promedio, último año, climatología a 2 km y series en los puntos"
+  },
+  {
+   "origen": "datos/pisco/PISCOp_m.nc fuera de Junín",
+   "motivo": "Se recorta a la caja de Junín"
+  }
+ ]
+}

@@ -27,3 +27,8 @@ __pycache__/
 
 # Casos exportados localmente desde el sandbox
 exports/
+
+# Pipeline de datos (versión mejorada): los datos crudos (~900 MB) no van a GitHub
+pipeline/datos/
+pipeline/.cache/
+pipeline/**/__pycache__/

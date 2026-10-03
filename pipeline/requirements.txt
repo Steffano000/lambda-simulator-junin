@@ -1,0 +1,9 @@
+earthengine-api>=1.0
+requests
+rasterio
+numpy
+pandas
+statsmodels
+aquacrop
+xarray
+netCDF4

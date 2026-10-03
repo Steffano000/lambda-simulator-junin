@@ -148,6 +148,16 @@ Lambda-simulator/
 
 "Contratos" significa que las interfaces del módulo ya están definidas según su documento y que la implementación está marcada con `TODO(paso-NN)`.
 
+## Datos de Junín (versión mejorada)
+
+Esta copia integra los datos y códigos de `C:\TESIS 2\DATOS PARA LA VERSION MEJORADA`:
+
+- `pipeline/`: los 18 códigos Python del equipo de Ambiental, los `.bat` y el nuevo paso `17_exportar_json.py`, que convierte **toda** la carpeta `datos` (CSV, GeoTIFF, NetCDF, GeoJSON) a JSON.
+- `public/data/junin/`: los JSON resultantes (~46 MB, listados en `manifest.json`): escenarios SARIMAX a 24 meses, catálogo de 45 cultivos, fenología, AquaCrop, reglas de uso de suelo, grillas de Junín a 1 km, 10 parcelas reales de 40 × 40 celdas de 30 m, series diarias 1950-2026, PISCO, SMAP, ENSO y validaciones.
+- `src/data/junin/` y `src/domain/junin/`: tipos, repositorio con `fetch` y el motor (punto más cercano, menú de cultivos, clima con semáforo P/ET0, rotación, rendimiento por motor FAO-56 / AquaCrop / DRA × aptitud, parcelas y adaptador a los escenarios de la app).
+
+Detalle en [docs/11-datos-junin.md](docs/11-datos-junin.md).
+
 ## Sistema visual (Tailwind + Three.js)
 
 `src/theme/tokens.ts` es la **única fuente de color** (ver `docs/design.md`). La leen tanto Tailwind, para la interfaz, como Three.js, para la grilla, así que la leyenda y el bloque 3D siempre coinciden.
@@ -173,9 +183,9 @@ Ver [CONTRIBUTING.md](CONTRIBUTING.md) para la metodología de ramas, commits y 
 Este proyecto está bajo la licencia **MIT**. Consulta el archivo [LICENSE](LICENSE) para más detalles.
 
 ### Cómo citar / referenciar este proyecto
+
 Si utilizas este simulador o su código base en investigaciones, trabajos académicos o desarrollos derivados, por favor otorga la correspondiente atribución incluyendo la siguiente cita o enlace:
 
 > **Lambda Simulator** (2026). Simulador web 3D de plantaciones andinas (valle del Mantaro).  
 > Autores: UmbraFlare.  
 > Repositorio: [https://github.com/UmbraFlare-code/Lambda-simulator](https://github.com/UmbraFlare-code/Lambda-simulator)
-
