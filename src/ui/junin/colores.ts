@@ -223,9 +223,10 @@ export const OVERLAYS_NASA: Record<OverlayNasa, CapaGibs> = {
     desfaseDias: 1,
   },
   etiquetas: {
-    id: 'Reference_Labels_15m',
+    // Reference_Labels_15m devuelve teselas negras opacas (comprobado el 3-oct-2026): se usa la de 9 niveles
+    id: 'Reference_Labels',
     nombre: 'Nombres (referencia NASA)',
-    nivel: 13,
+    nivel: 9,
     ext: 'png',
     sinFecha: true,
   },

@@ -46,7 +46,7 @@ Cada bloque es un chunk. Las celdas fuera del polígono o con cobertura bloquead
 | NDVI         | `MODIS_Terra_L3_NDVI_16Day`                  | 9     | La fecha se ajusta al compuesto disponible |
 | Humedad      | `SMAP_L4_Analyzed_Surface_Soil_Moisture`     | 6     | ~4 días de retraso                         |
 | Lluvia       | `IMERG_Precipitation_Rate`                   | 6     | ~1 día de retraso                          |
-| Nombres      | `Reference_Labels_15m`                       | 13    | Sin fecha                                  |
+| Nombres      | `Reference_Labels`                           | 9     | Sin fecha (la versión 15m sale negra)      |
 
 Se cambian en `src/ui/junin/colores.ts`.
 
