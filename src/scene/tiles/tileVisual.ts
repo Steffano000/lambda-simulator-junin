@@ -18,6 +18,8 @@ export const ALTURA_BLOQUE = {
   trabajado: 0.94,
   /** El canal se hunde para que se vea el recorrido del agua. */
   canal: 0.8,
+  /** Bloqueado o sin dato (parcela real): losa delgada, no es terreno cultivable. */
+  bloqueado: 0.12,
 } as const;
 
 /** Alto de los lomos (montículos) del arado sobre la cara superior del bloque. */
@@ -53,6 +55,7 @@ export function tileColor(tile: TileNode, overlay: Overlay): string {
 
 /** Altura visible del bloque: el suelo trabajado baja un poco (surcos) y el canal se hunde. */
 export function tileHeight(tile: TileNode): number {
+  if (tile.bloqueado) return ALTURA_BLOQUE.bloqueado;
   if (tile.canal) return ALTURA_BLOQUE.canal;
   return tile.estado === 'baldio' ? ALTURA_BLOQUE.baldio : ALTURA_BLOQUE.trabajado;
 }

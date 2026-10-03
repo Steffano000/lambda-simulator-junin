@@ -18,6 +18,13 @@ import turfArea from '@turf/area';
 import booleanPointInPolygon from '@turf/boolean-point-in-polygon';
 import { point, polygon as turfPolygon } from '@turf/helpers';
 import type { EcoCrop, GrillaCapas, Parcela, ReglaUso, ReglasUsoSuelo } from '@/data/junin/types';
+import {
+  prepararChunks,
+  usable,
+  UMBRAL_COBERTURA_PCT,
+  type EstadoChunk,
+  type MotivoBloqueo,
+} from './estadoChunk';
 import { indiceEnGrilla, valorCapa } from './grilla';
 
 /** Anillo exterior [lon, lat] (no hace falta repetir el primer vértice) */
@@ -43,8 +50,15 @@ export interface Chunk {
   columna: number;
   lat: number;
   lon: number;
-  /** El centro del chunk está dentro de la parcela dibujada */
+  /** Alguna parte del chunk está dentro de la parcela dibujada (fraccion > 0) */
   dentro: boolean;
+  /** Fracción del área del chunk dentro del polígono (0-1): el borde se mide exacto */
+  fraccion: number;
+  /** con_dato | interpolado | sin_dato | bloqueado (ver estadoChunk.ts) */
+  estado: EstadoChunk;
+  /** Por qué está sin dato o bloqueado */
+  motivo: string | null;
+  bloqueo: MotivoBloqueo | null;
   elevacion_m: number | null;
   pendiente_grados: number | null;
   worldcover: number | null;
@@ -191,7 +205,6 @@ export function construirChunks(anillo: Anillo, f: FuentesLocales): GrillaChunks
   const dlon = celda / (M_POR_GRADO * Math.cos((lat0 * Math.PI) / 180));
   const filas = Math.max(1, Math.ceil((norte - sur) / dlat));
   const columnas = Math.max(1, Math.ceil((este - oeste) / dlon));
-  const poly = poligonoTurf(anillo);
   const clases = (f.grilla.leyendas?.textura_app as string[] | undefined) ?? [];
   const chunks: Chunk[] = [];
 
@@ -199,7 +212,7 @@ export function construirChunks(anillo: Anillo, f: FuentesLocales): GrillaChunks
     for (let columna = 0; columna < columnas; columna++) {
       const lat = norte - (fila + 0.5) * dlat;
       const lon = oeste + (columna + 0.5) * dlon;
-      const dentro = booleanPointInPolygon(point([lon, lat]), poly);
+      const dentro = false; // se calcula en prepararChunks (fracción exacta)
       const p = f.parcelas.find((x) => indiceEnParcela(x, lat, lon) != null);
       let ch: Chunk;
       if (p) {
@@ -224,6 +237,7 @@ export function construirChunks(anillo: Anillo, f: FuentesLocales): GrillaChunks
           ndvi: valorCapa(c.ndvi_ultimo_anio, i),
           textura: c.textura_app.datos[i] ?? null,
           fuente: '30m',
+          ...PENDIENTE,
         };
       } else {
         const g = f.grilla;
@@ -249,12 +263,13 @@ export function construirChunks(anillo: Anillo, f: FuentesLocales): GrillaChunks
           ndvi: v('ndvi_ultimo_anio'),
           textura: t == null ? null : (clases[t] ?? null),
           fuente: '1km',
+          ...PENDIENTE,
         };
       }
       chunks.push(ch);
     }
   }
-  return {
+  const g: GrillaChunks = {
     celda_m: celda,
     filas,
     columnas,
@@ -264,63 +279,142 @@ export function construirChunks(anillo: Anillo, f: FuentesLocales): GrillaChunks
     chunks,
     origen: 'local',
   };
+  return prepararChunks(g, anillo, { reglas: f.reglas });
 }
 
+/** Valores provisionales hasta que prepararChunks calcula fracción y estado */
+const PENDIENTE = { fraccion: 0, estado: 'sin_dato' as EstadoChunk, motivo: null, bloqueo: null };
+
 export interface ResumenParcela {
+  /** Chunks con alguna parte dentro del polígono */
   n_dentro: number;
-  pct: Record<ReglaUso, number>;
+  n_con_dato: number;
+  n_interpolado: number;
+  n_sin_dato: number;
+  n_bloqueado: number;
+  /** Áreas (ha) medidas con la fracción exacta de cada chunk */
+  area_total_ha: number;
+  area_efectiva_ha: number;
+  area_bloqueada_ha: number;
+  area_sin_dato_ha: number;
+  /** % del área NO bloqueada que tiene datos (con_dato + interpolado) */
+  pct_cubierto: number;
+  datos_suficientes: boolean;
+  /** % del área: permitido y advertencia (con datos), bloqueado y sin dato */
+  pct: { permitido: number; advertencia: number; bloqueado: number; sin_dato: number };
   puede_sembrar: boolean;
   advertencias: string[];
   bloqueos: string[];
+  /** Motivo principal de los chunks sin dato */
+  sin_dato: string[];
+  areas_protegidas: string[];
   cobertura_pct: Record<string, number>;
   elevacion_media_m: number | null;
   pendiente_media_grados: number | null;
   textura_dominante: string | null;
   ph_medio: number | null;
-  /** % de chunks con datos a 30 m */
+  /** % del área con datos a 30 m o del servidor */
   pct_30m: number;
 }
 
-const media = (xs: (number | null)[]): number | null => {
-  const v = xs.filter((x): x is number => x != null && Number.isFinite(x));
-  return v.length ? v.reduce((a, b) => a + b, 0) / v.length : null;
+/** Media ponderada por área de los chunks utilizables */
+const mediaPonderada = (cs: Chunk[], f: (c: Chunk) => number | null): number | null => {
+  let s = 0;
+  let w = 0;
+  for (const c of cs) {
+    const v = f(c);
+    if (v == null || !Number.isFinite(v)) continue;
+    s += v * c.fraccion;
+    w += c.fraccion;
+  }
+  return w ? s / w : null;
 };
 
-/** Paso 4: ¿es apta? (>50 % bloqueado = no se siembra; advertencias si hay bosque, bofedal, etc.) */
+const r1 = (x: number) => Math.round(x * 10) / 10;
+
+/**
+ * Paso 4: ¿es apta? Se siembra si lo bloqueado es ≤ 50 % del área y al menos el
+ * UMBRAL_COBERTURA_PCT del área no bloqueada tiene datos. Todo se pondera por área exacta.
+ */
 export function resumirParcela(g: GrillaChunks, reglas: ReglasUsoSuelo): ResumenParcela {
+  const celdaHa = (g.celda_m * g.celda_m) / 10_000;
   const dentro = g.chunks.filter((c) => c.dentro);
-  const n = dentro.length || 1;
-  const pct: Record<ReglaUso, number> = { permitido: 0, advertencia: 0, bloqueado: 0 };
+  const util = dentro.filter(usable);
+  const area = (cs: Chunk[]) => cs.reduce((a, c) => a + c.fraccion, 0) * celdaHa;
+  const total = area(dentro);
+  const bloq = dentro.filter((c) => c.estado === 'bloqueado');
+  const sinDato = dentro.filter((c) => c.estado === 'sin_dato');
+  const aBloq = area(bloq);
+  const aSin = area(sinDato);
+  const aUtil = area(util);
+  const aAdv = area(util.filter((c) => c.regla === 'advertencia'));
+  const pctDe = (a: number) => (total ? r1((100 * a) / total) : 0);
+  const pctCubierto = total - aBloq > 0 ? r1((100 * aUtil) / (total - aBloq)) : 0;
+  const datosSuficientes = pctCubierto >= UMBRAL_COBERTURA_PCT;
+
   const cobertura: Record<string, number> = {};
-  for (const c of dentro) {
-    if (c.regla) pct[c.regla] += 100 / n;
+  for (const c of dentro)
     if (c.worldcover != null)
-      cobertura[String(c.worldcover)] = (cobertura[String(c.worldcover)] ?? 0) + 100 / n;
-  }
-  const mensajes = (regla: ReglaUso) =>
-    Object.keys(cobertura)
-      .filter((k) => reglas.worldcover[k]?.regla === regla)
-      .map(
-        (k) =>
-          `${reglas.worldcover[k].nombre} (${cobertura[k].toFixed(0)} %)${reglas.worldcover[k].mensaje ? ': ' + reglas.worldcover[k].mensaje : ''}`,
-      );
+      cobertura[String(c.worldcover)] = (cobertura[String(c.worldcover)] ?? 0) + c.fraccion;
+  const sumaF = dentro.reduce((a, c) => a + c.fraccion, 0) || 1;
+  for (const k of Object.keys(cobertura)) cobertura[k] = r1((100 * cobertura[k]) / sumaF);
+
+  const advertencias = Object.keys(cobertura)
+    .filter((k) => reglas.worldcover[k]?.regla === 'advertencia')
+    .map(
+      (k) =>
+        `${reglas.worldcover[k].nombre} (${cobertura[k].toFixed(0)} %)${reglas.worldcover[k].mensaje ? ': ' + reglas.worldcover[k].mensaje : ''}`,
+    );
+  const bloqueos: string[] = [];
+  const porMotivo = new Map<string, number>();
+  for (const c of bloq)
+    porMotivo.set(c.motivo ?? 'Bloqueado', (porMotivo.get(c.motivo ?? 'Bloqueado') ?? 0) + c.fraccion);
+  for (const [m, f] of porMotivo) bloqueos.push(`${m} (${pctDe(f * celdaHa).toFixed(0)} % del área)`);
+  const sinMotivo = new Map<string, number>();
+  for (const c of sinDato)
+    sinMotivo.set(c.motivo ?? 'Sin dato', (sinMotivo.get(c.motivo ?? 'Sin dato') ?? 0) + c.fraccion);
+  const sin_dato = [...sinMotivo].map(([m, f]) => `${m} (${pctDe(f * celdaHa).toFixed(0)} % del área)`);
+  const areas_protegidas = [
+    ...new Set(
+      bloq
+        .filter((c) => c.bloqueo === 'area_protegida')
+        .map((c) => (c.motivo ?? '').replace('Área natural protegida: ', '').replace(/\.$/, '')),
+    ),
+  ];
+
   const texturas: Record<string, number> = {};
-  for (const c of dentro) if (c.textura) texturas[c.textura] = (texturas[c.textura] ?? 0) + 1;
+  for (const c of util) if (c.textura) texturas[c.textura] = (texturas[c.textura] ?? 0) + c.fraccion;
   const dom = Object.entries(texturas).sort((a, b) => b[1] - a[1])[0]?.[0] ?? null;
-  for (const k of Object.keys(pct) as ReglaUso[]) pct[k] = Math.round(pct[k] * 10) / 10;
-  for (const k of Object.keys(cobertura)) cobertura[k] = Math.round(cobertura[k] * 10) / 10;
+  const ha = (x: number) => Math.round(x * 10_000) / 10_000;
   return {
     n_dentro: dentro.length,
-    pct,
-    puede_sembrar: dentro.length > 0 && pct.bloqueado <= 50,
-    advertencias: mensajes('advertencia'),
-    bloqueos: mensajes('bloqueado'),
+    n_con_dato: util.filter((c) => c.estado === 'con_dato').length,
+    n_interpolado: util.filter((c) => c.estado === 'interpolado').length,
+    n_sin_dato: sinDato.length,
+    n_bloqueado: bloq.length,
+    area_total_ha: ha(total),
+    area_efectiva_ha: ha(aUtil),
+    area_bloqueada_ha: ha(aBloq),
+    area_sin_dato_ha: ha(aSin),
+    pct_cubierto: pctCubierto,
+    datos_suficientes: datosSuficientes,
+    pct: {
+      permitido: pctDe(aUtil - aAdv),
+      advertencia: pctDe(aAdv),
+      bloqueado: pctDe(aBloq),
+      sin_dato: pctDe(aSin),
+    },
+    puede_sembrar: total > 0 && pctDe(aBloq) <= 50 && datosSuficientes && aUtil > 0,
+    advertencias,
+    bloqueos,
+    sin_dato,
+    areas_protegidas,
     cobertura_pct: cobertura,
-    elevacion_media_m: media(dentro.map((c) => c.elevacion_m)),
-    pendiente_media_grados: media(dentro.map((c) => c.pendiente_grados)),
+    elevacion_media_m: mediaPonderada(util, (c) => c.elevacion_m),
+    pendiente_media_grados: mediaPonderada(util, (c) => c.pendiente_grados),
     textura_dominante: dom,
-    ph_medio: media(dentro.map((c) => c.ph)),
-    pct_30m: Math.round((100 * dentro.filter((c) => c.fuente !== '1km').length) / n),
+    ph_medio: mediaPonderada(util, (c) => c.ph),
+    pct_30m: aUtil ? Math.round((100 * area(util.filter((c) => c.fuente !== '1km'))) / aUtil) : 0,
   };
 }
 
@@ -338,12 +432,13 @@ export function aptitudPh(ph: number | null, e: EcoCrop | undefined): number {
 }
 
 export interface RendimientoChunks {
-  /** t/ha por chunk (null fuera de la parcela) */
+  /** t/ha por chunk: null fuera de la parcela o sin dato; 0 si está bloqueado */
   porChunk: (number | null)[];
-  /** Factor medio de la parcela (uso de suelo × pH) */
+  /** Factor medio de la parcela (uso de suelo × pH), ponderado por área */
   factor_parcela: number;
   rend_parcela_t_ha: number;
   produccion_t: number;
+  /** Área efectiva (ha): solo chunks con datos, con su fracción exacta dentro del polígono */
   area_ha: number;
 }
 
@@ -351,30 +446,35 @@ export interface RendimientoChunks {
  * Paso 11: rendimiento por chunk = rendimiento del escenario × uso de suelo × pH relativo.
  * El rendimiento DRA ya refleja los suelos típicos de la provincia, así que el pH se compara
  * con el del punto de referencia: solo baja el chunk que es menos apto que ese suelo.
+ * Los chunks sin dato no entran; los bloqueados producen 0. La producción usa el área exacta.
  */
 export function rendimientoPorChunk(
   g: GrillaChunks,
   rend_t_ha: number,
   eco: EcoCrop | undefined,
-  area_ha: number,
   phReferencia: number | null = null,
 ): RendimientoChunks {
   const aptRef = Math.max(0.05, aptitudPh(phReferencia, eco));
+  const celdaHa = (g.celda_m * g.celda_m) / 10_000;
+  let prod = 0;
+  let areaUtil = 0;
   const porChunk = g.chunks.map((c) => {
-    if (!c.dentro) return null;
-    if (c.regla === 'bloqueado') return 0;
+    if (!c.dentro || c.estado === 'sin_dato') return null;
+    if (c.estado === 'bloqueado') return 0;
     const fUso = c.regla === 'advertencia' ? PENALIZACION_ADVERTENCIA : 1;
     const fPh = Math.min(1, aptitudPh(c.ph, eco) / aptRef);
-    return Math.round(rend_t_ha * fUso * fPh * 100) / 100;
+    const r = rend_t_ha * fUso * fPh;
+    prod += r * c.fraccion * celdaHa;
+    areaUtil += c.fraccion * celdaHa;
+    return Math.round(r * 100) / 100;
   });
-  const vals = porChunk.filter((x): x is number => x != null);
-  const prom = vals.length ? vals.reduce((a, b) => a + b, 0) / vals.length : 0;
+  const prom = areaUtil ? prod / areaUtil : 0;
   return {
     porChunk,
     factor_parcela: rend_t_ha ? Math.round((prom / rend_t_ha) * 1000) / 1000 : 0,
     rend_parcela_t_ha: Math.round(prom * 100) / 100,
-    produccion_t: Math.round(prom * area_ha * 100) / 100,
-    area_ha,
+    produccion_t: Math.round(prod * 100) / 100,
+    area_ha: Math.round(areaUtil * 10_000) / 10_000,
   };
 }
 

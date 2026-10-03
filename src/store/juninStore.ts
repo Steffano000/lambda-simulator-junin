@@ -13,7 +13,7 @@ export type Modo = 'junin' | 'simulador';
 export type BaseNasa = 'esri' | 'eox' | 'modis' | 'viirs' | 'hls';
 export type OverlayNasa = 'ndvi' | 'humedad' | 'lluvia' | 'etiquetas';
 export type CapaChunk =
-  'regla' | 'cobertura' | 'elevacion' | 'pendiente' | 'textura' | 'ph' | 'ndvi' | 'rendimiento';
+  'estado' | 'regla' | 'cobertura' | 'elevacion' | 'pendiente' | 'textura' | 'ph' | 'ndvi' | 'rendimiento';
 
 export interface PasoRotacion {
   campana: number;
@@ -32,6 +32,15 @@ export interface UbicacionParcela {
   piso: string | null;
   fuera_de_junin: boolean;
   area_protegida: string | null;
+}
+
+export interface EstadoCasas {
+  estado: 'ok' | 'error' | 'omitido';
+  n: number;
+  mensaje: string;
+  fuente: string;
+  consultado: string;
+  contornos: [number, number][][];
 }
 
 export interface JuninState {
@@ -58,6 +67,8 @@ export interface JuninState {
   chunks: GrillaChunks | null;
   resumen: ResumenParcela | null;
   ubicacion: UbicacionParcela | null;
+  /** Casas consultadas en vivo (OpenStreetMap); null mientras no se consulta */
+  casas: EstadoCasas | null;
   capaChunk: CapaChunk;
   escenario: EscenarioId;
   cultivo: string | null;
@@ -96,6 +107,7 @@ export const useJuninStore = create<JuninState>()(() => ({
   chunks: null,
   resumen: null,
   ubicacion: null,
+  casas: null,
   capaChunk: 'regla',
   escenario: 'actual',
   cultivo: null,

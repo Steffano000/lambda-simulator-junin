@@ -16,7 +16,9 @@ import { TileField } from './TileField';
 import { useTilePicking } from './useTilePicking';
 
 export function GridRoot() {
-  const tiles = useSimStore((s) => s.tiles);
+  const todas = useSimStore((s) => s.tiles);
+  // Las celdas fuera de la parcela real no se dibujan ni se pueden elegir
+  const tiles = useMemo(() => todas.filter((t) => !t.oculto), [todas]);
   const config = useSimStore((s) => s.config);
   const overlay = useSimStore((s) => s.overlay);
   const seleccion = useSimStore((s) => s.seleccion);

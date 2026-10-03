@@ -72,7 +72,7 @@ export function TreatmentStep() {
         <p className="mb-2 text-2xs text-ui-ink-muted">
           Clic en una celda o arrastra para seleccionar un área. Clic derecho para girar la cámara.
           {hayBloqueadas &&
-            ' Las celdas grises (fuera de tu parcela o en ciudad, agua o nieve) nunca se seleccionan.'}
+            ' Las losas planas (casas, ciudad, agua, nieve, área protegida o sin dato) nunca se seleccionan.'}
         </p>
         <button
           className="btn mb-2 w-full justify-center"

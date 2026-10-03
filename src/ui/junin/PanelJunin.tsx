@@ -15,11 +15,13 @@ import {
   menuCultivos,
   MOTOR_ETIQUETA,
   PENALIZACION_ADVERTENCIA,
+  UMBRAL_COBERTURA_PCT,
 } from '@/domain/junin';
 import { useJuninStore, type BaseNasa, type CapaChunk, type OverlayNasa } from '@/store/juninStore';
 import {
   BASES_HD,
   BASES_NASA,
+  COLOR_ESTADO,
   COLOR_REGLA,
   ETIQUETA_CAPA,
   leyendaCapa,
@@ -94,6 +96,7 @@ export function PanelJunin() {
       campana: st.campana,
       plan: st.plan,
       servidor: st.servidor,
+      casas: st.casas,
     })),
   );
   const res = useResultadoJunin();
@@ -262,20 +265,31 @@ export function PanelJunin() {
             chacra (menos de 50 ha).
           </p>
         )}
-        {s.chunks && (
+        {s.chunks && s.resumen && (
           <>
+            <Dato k="Área exacta dentro de los chunks" v={`${fmt(s.resumen.area_total_ha, 3)} ha`} />
+            <Dato
+              k="Área efectiva (con datos, sin bloqueos)"
+              v={`${fmt(s.resumen.area_efectiva_ha, 3)} ha`}
+            />
             <Dato
               k="Chunks"
-              v={`${s.chunks.filas} × ${s.chunks.columnas} de ${s.chunks.celda_m} m (${s.resumen?.n_dentro} dentro, ${(((s.resumen?.n_dentro ?? 0) * s.chunks.celda_m ** 2) / 10_000).toFixed(2)} ha)`}
+              v={`${s.resumen.n_dentro} de ${s.chunks.celda_m} m: ${s.resumen.n_con_dato} a 30 m · ${s.resumen.n_interpolado} a ~1 km · ${s.resumen.n_sin_dato} sin dato · ${s.resumen.n_bloqueado} bloqueados`}
             />
+            <Dato k="Área no bloqueada con datos" v={`${s.resumen.pct_cubierto} %`} />
             <Dato
               k="Origen de los datos"
               v={
                 s.chunks.origen === 'servidor'
                   ? 'Servidor (TIF a 30 m)'
-                  : `${s.resumen?.pct_30m}% a 30 m · resto a ~1 km`
+                  : `${s.resumen.pct_30m}% a 30 m · resto a ~1 km`
               }
             />
+            {s.resumen.sin_dato.map((m) => (
+              <p key={m} className="text-2xs text-ui-ink-muted">
+                ▫ {m}
+              </p>
+            ))}
             <details className="mt-1 text-2xs text-ui-ink-muted">
               <summary className="cursor-pointer">¿Por qué chunks de {s.chunks.celda_m} m?</summary>
               <p className="mt-1">
@@ -304,21 +318,30 @@ export function PanelJunin() {
               className={`mb-2 rounded px-2 py-1 font-semibold ${s.resumen.puede_sembrar ? 'bg-green-100 text-green-900' : 'bg-red-100 text-red-900'}`}
             >
               {s.resumen.puede_sembrar
-                ? 'Se puede sembrar'
-                : 'No se puede sembrar: más del 50 % es ciudad, agua, nieve u otra zona bloqueada'}
+                ? `Se puede sembrar en ${fmt(s.resumen.area_efectiva_ha, 3)} ha`
+                : !s.resumen.datos_suficientes
+                  ? `Datos insuficientes: solo ${s.resumen.pct_cubierto} % del área tiene datos (mínimo ${UMBRAL_COBERTURA_PCT} %). No se da un rendimiento.`
+                  : 'No se puede sembrar: más del 50 % está bloqueado (ciudad, casas, agua, nieve o área protegida)'}
             </div>
             <div className="mb-1 flex h-2 overflow-hidden rounded">
-              {(['permitido', 'advertencia', 'bloqueado'] as const).map((k) => (
+              {(
+                [
+                  ['permitido', COLOR_REGLA.permitido],
+                  ['advertencia', COLOR_REGLA.advertencia],
+                  ['bloqueado', COLOR_REGLA.bloqueado],
+                  ['sin_dato', COLOR_ESTADO.sin_dato],
+                ] as const
+              ).map(([k, color]) => (
                 <div
                   key={k}
-                  style={{ width: `${s.resumen!.pct[k]}%`, background: COLOR_REGLA[k] }}
+                  style={{ width: `${s.resumen!.pct[k]}%`, background: color }}
                   title={`${k} ${s.resumen!.pct[k]}%`}
                 />
               ))}
             </div>
             <div className="mb-1 text-2xs text-ui-ink-muted">
               Permitido {s.resumen.pct.permitido}% · advertencia {s.resumen.pct.advertencia}% · bloqueado{' '}
-              {s.resumen.pct.bloqueado}%
+              {s.resumen.pct.bloqueado}% · sin dato {s.resumen.pct.sin_dato}%
             </div>
             {s.resumen.advertencias.map((a) => (
               <p key={a} className="text-amber-700">
@@ -330,8 +353,12 @@ export function PanelJunin() {
                 ⛔ {a}
               </p>
             ))}
-            {u?.area_protegida && (
-              <p className="text-amber-700">⚠ Dentro de un área natural protegida: {u.area_protegida}.</p>
+            {s.casas && (
+              <p
+                className={`text-2xs ${s.casas.estado === 'ok' ? 'text-ui-ink-muted' : 'font-semibold text-amber-700'}`}
+              >
+                🏠 Casas ({s.casas.fuente}, en vivo): {s.casas.mensaje}
+              </p>
             )}
             {s.resumen.advertencias.length > 0 && (
               <p className="mt-1 text-2xs text-ui-ink-muted">
@@ -450,6 +477,11 @@ export function PanelJunin() {
       </Paso>
 
       <Paso n={8} titulo="Cultivo" apagado={!listo}>
+        {s.resumen && u && !u.fuera_de_junin && !s.resumen.puede_sembrar && (
+          <p className="text-ui-danger">
+            La simulación no corre en esta parcela (ver el paso 4). Dibuja otra o ajusta el polígono.
+          </p>
+        )}
         {listo && (
           <>
             <select
@@ -547,7 +579,9 @@ export function PanelJunin() {
                 <div className="value text-base font-semibold">
                   {res.rc ? res.rc.produccion_t.toFixed(1) : '—'}
                 </div>
-                <div className="text-2xs text-ui-ink-muted">t en {fmt(s.area_ha, 2)} ha</div>
+                <div className="text-2xs text-ui-ink-muted">
+                  t en {fmt(res.rc?.area_ha ?? s.area_ha, 3)} ha útiles
+                </div>
               </div>
               <div className="rounded bg-ui-panel-2 p-1.5">
                 <div className="value text-base font-semibold">{res.r.rend_t_ha.toFixed(2)}</div>

@@ -38,6 +38,15 @@ export const COLOR_WORLDCOVER: Record<string, string> = {
 
 export const COLOR_REGLA = { permitido: '#2E8B57', advertencia: '#E3A72F', bloqueado: '#C0392B' } as const;
 
+/** Estado del chunk (Fase 1) */
+export const COLOR_ESTADO = {
+  con_dato: '#2E8B57',
+  interpolado: '#E3C02F',
+  sin_dato: '#9AA0A6',
+  bloqueado: '#C0392B',
+} as const;
+const COLOR_SIN_DATO = '#9AA0A6';
+
 const RAMPA_ELEV: Stop[] = [
   [0, '#1A9850'],
   [0.5, '#FEE08B'],
@@ -69,8 +78,12 @@ export interface ContextoColor {
 }
 
 export function colorChunk(c: Chunk, i: number, capa: CapaChunk, ctx: ContextoColor): string | null {
+  if (c.estado === 'sin_dato' && capa !== 'estado') return COLOR_SIN_DATO;
   switch (capa) {
+    case 'estado':
+      return COLOR_ESTADO[c.estado];
     case 'regla':
+      if (c.estado === 'bloqueado') return COLOR_REGLA.bloqueado;
       return c.regla ? COLOR_REGLA[c.regla] : null;
     case 'cobertura':
       return c.worldcover == null ? null : (COLOR_WORLDCOVER[String(c.worldcover)] ?? null);
@@ -94,6 +107,7 @@ export function colorChunk(c: Chunk, i: number, capa: CapaChunk, ctx: ContextoCo
 }
 
 export const ETIQUETA_CAPA: Record<CapaChunk, string> = {
+  estado: 'Datos',
   regla: 'Uso permitido',
   cobertura: 'Cobertura',
   elevacion: 'Altura',
@@ -107,6 +121,13 @@ export const ETIQUETA_CAPA: Record<CapaChunk, string> = {
 /** Leyenda de cada capa: [color, texto] */
 export function leyendaCapa(capa: CapaChunk, ctx: ContextoColor, presentes: Chunk[]): [string, string][] {
   switch (capa) {
+    case 'estado':
+      return [
+        [COLOR_ESTADO.con_dato, 'Dato a 30 m'],
+        [COLOR_ESTADO.interpolado, 'Dato a ~1 km'],
+        [COLOR_ESTADO.sin_dato, 'Sin dato'],
+        [COLOR_ESTADO.bloqueado, 'Bloqueado'],
+      ];
     case 'regla':
       return [
         [COLOR_REGLA.permitido, 'Permitido'],

@@ -60,6 +60,7 @@ export function MapaJunin() {
       parcelas: st.parcelas,
       grilla: st.grilla,
       aviso: st.avisoTeselas,
+      casas: st.casas,
     })),
   );
   const res = useResultadoJunin();
@@ -323,31 +324,49 @@ export function MapaJunin() {
       rendMax: Math.max(0.01, ...(rend ?? []).map((x) => x ?? 0)),
       rend,
     };
-    // Una imagen con un píxel por chunk (rápido aunque haya 10 000 chunks de 1 m)
+    // Imagen de los chunks recortada con el polígono exacto: el borde se ve como lo dibujaste
+    // (varios píxeles por chunk para que el corte sea limpio; rápido aunque haya 10 000 chunks)
     const g = s.chunks;
+    const [oeste, , , norte] = g.bbox;
+    const escala = Math.max(1, Math.min(8, Math.floor(1600 / Math.max(g.columnas, g.filas))));
     const lienzo = document.createElement('canvas');
-    lienzo.width = g.columnas;
-    lienzo.height = g.filas;
+    lienzo.width = g.columnas * escala;
+    lienzo.height = g.filas * escala;
     const dib = lienzo.getContext('2d')!;
+    dib.beginPath();
+    s.anillo.forEach(([lon, lat], k) => {
+      const x = ((lon - oeste) / g.dlon) * escala;
+      const y = ((norte - lat) / g.dlat) * escala;
+      if (k === 0) dib.moveTo(x, y);
+      else dib.lineTo(x, y);
+    });
+    dib.closePath();
+    dib.clip();
     g.chunks.forEach((c, i) => {
       if (!c.dentro) return;
       dib.fillStyle = colorChunk(c, i, s.capaChunk, ctx) ?? '#777777';
-      dib.fillRect(c.columna, c.fila, 1, 1);
+      dib.fillRect(c.columna * escala, c.fila * escala, escala, escala);
     });
-    const [oeste, , , norte] = g.bbox;
-    const cg = L.imageOverlay(
-      lienzo.toDataURL(),
-      [
-        [norte - g.filas * g.dlat, oeste],
-        [norte, oeste + g.columnas * g.dlon],
-      ],
-      { opacity: 0.6, interactive: false },
-    );
+    // Casas (OpenStreetMap) con su margen: contorno rojo
+    const cg = L.layerGroup([
+      L.imageOverlay(
+        lienzo.toDataURL(),
+        [
+          [norte - g.filas * g.dlat, oeste],
+          [norte, oeste + g.columnas * g.dlon],
+        ],
+        { opacity: 0.6, interactive: false },
+      ),
+      ...(s.casas?.contornos ?? []).map((a) =>
+        L.polygon(
+          a.map(([lon, lat]) => [lat, lon] as L.LatLngTuple),
+          { color: '#FF1744', weight: 1.5, fillOpacity: 0.15, interactive: false },
+        ),
+      ),
+    ]);
     cg.addTo(m);
-    const img = cg.getElement();
-    if (img) img.style.imageRendering = 'pixelated';
     capas.current.chunks = cg;
-  }, [s.anillo, s.chunks, s.capaChunk, rend, renderer]);
+  }, [s.anillo, s.chunks, s.capaChunk, s.casas, rend, renderer]);
 
   // Encuadrar la parcela nueva
   useEffect(() => {
@@ -401,8 +420,17 @@ export function MapaJunin() {
       {hover && (
         <div className="pointer-events-none absolute bottom-8 left-2 z-[500] w-60 rounded bg-white/95 p-2 text-2xs text-black shadow">
           <div className="font-semibold">
-            Chunk {hover.fila},{hover.columna} · dato {hover.fuente === '1km' ? 'a ~1 km' : 'a 30 m'}
+            Chunk {hover.fila},{hover.columna} ·{' '}
+            {hover.estado === 'con_dato'
+              ? 'dato a 30 m'
+              : hover.estado === 'interpolado'
+                ? 'dato a ~1 km'
+                : hover.estado === 'sin_dato'
+                  ? 'SIN DATO'
+                  : 'BLOQUEADO'}
+            {hover.fraccion < 1 && ` · ${Math.round(hover.fraccion * 100)} % dentro`}
           </div>
+          {hover.motivo && <div className="text-red-700">{hover.motivo}</div>}
           <div>
             Altura {hover.elevacion_m?.toFixed(0) ?? '—'} m · pendiente{' '}
             {hover.pendiente_grados?.toFixed(1) ?? '—'}°

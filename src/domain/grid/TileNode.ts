@@ -55,6 +55,8 @@ export interface TileNode {
    * o con cobertura bloqueada (ciudad, agua, nieve). Ninguna acción ni siembra la acepta.
    */
   bloqueado?: { motivo: string; color: string } | null;
+  /** Celda fuera del polígono dibujado: existe para completar la grilla, pero no se dibuja */
+  oculto?: boolean;
 }
 
 export const tileId = (x: number, z: number): string => `${x}:${z}`;

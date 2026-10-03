@@ -4,6 +4,7 @@
  */
 import { container } from '@/app/container';
 import { JuninRepository } from '@/data/junin';
+import { casasEnVivo } from '@/data/junin/osm';
 import { chunksDelServidor, servidorDisponible } from '@/data/junin/servidor';
 import type { EscenarioId, Parcela } from '@/data/junin/types';
 import {
@@ -14,6 +15,10 @@ import {
   CULTIVO_SIMULADOR,
   cuadrado,
   enGeojson,
+  indexarPoligonos,
+  prepararChunks,
+  SUPUESTOS_SIMULADOR,
+  type PoligonoIndexado,
   nombreEscenario,
   parcelaParaSimulador,
   pisoEcologico,
@@ -130,6 +135,7 @@ export class JuninController {
       chunks: null,
       resumen: null,
       ubicacion: null,
+      casas: null,
       area_ha: 0,
       plan: [],
       cultivo: null,
@@ -138,9 +144,19 @@ export class JuninController {
     });
   }
 
-  /** Pasos 3 a 6: área, ubicación, uso de suelo y grilla de chunks */
+  private indiceProtegidas: PoligonoIndexado[] | null = null;
+  private protegidasIndexadas(): PoligonoIndexado[] {
+    const fc = get().protegidas;
+    if (!fc) return [];
+    this.indiceProtegidas ??= indexarPoligonos(fc, (p) =>
+      [p.DESIG, p.NAME ?? p.ORIG_NAME].filter(Boolean).join(' '),
+    );
+    return this.indiceProtegidas;
+  }
+
+  /** Pasos 3 a 6: área, ubicación, uso de suelo (incluye casas y áreas protegidas) y chunks */
   async procesar(anillo: Anillo): Promise<void> {
-    const { nucleo, grilla, parcelas, region, protegidas } = get();
+    const { nucleo, grilla, parcelas, region } = get();
     if (!nucleo || !grilla) return;
     set({ cargando: 'Analizando la parcela…', error: null, anillo, plan: [], anterior: null, campana: 0 });
     const area_ha = areaHa(anillo);
@@ -148,7 +164,6 @@ export class JuninController {
     const fuera = region ? !enGeojson(c.lat, c.lon, region) : false;
     const punto = puntoMasCercano(c.lat, c.lon, nucleo.sim);
     const pp = nucleo.sim.puntos[punto];
-    const prot = protegidas ? enGeojson(c.lat, c.lon, protegidas) : null;
 
     let chunks = null;
     if (get().servidor) {
@@ -159,6 +174,16 @@ export class JuninController {
       }
     }
     chunks ??= construirChunks(anillo, { grilla, parcelas, reglas: nucleo.reglas });
+    // Casas EN VIVO (OpenStreetMap). Si falla, se avisa en el panel; no se asume que no hay casas.
+    set({ cargando: 'Buscando casas en OpenStreetMap…', casas: null });
+    const casas = await casasEnVivo(chunks.bbox);
+    const distanciaClimaM = distanciaKm(c.lat, c.lon, pp.lat, pp.lon) * 1000;
+    chunks = prepararChunks(chunks, anillo, {
+      reglas: nucleo.reglas,
+      distanciaClimaM,
+      protegidas: this.protegidasIndexadas(),
+      casas: casas.casas,
+    });
     const resumen = resumirParcela(chunks, nucleo.reglas);
     const elev = resumen.elevacion_media_m;
     set({
@@ -172,9 +197,15 @@ export class JuninController {
         provincia: pp.provincia,
         piso: elev == null ? null : pisoEcologico(elev, nucleo.catalogo.pisos_ecologicos),
         fuera_de_junin: fuera,
-        area_protegida: prot
-          ? String(prot.NAME ?? prot.name ?? prot.ORIG_NAME ?? 'Área natural protegida')
-          : null,
+        area_protegida: resumen.areas_protegidas.length ? resumen.areas_protegidas.join(', ') : null,
+      },
+      casas: {
+        estado: casas.estado,
+        n: casas.casas.length,
+        mensaje: casas.mensaje,
+        fuente: casas.fuente,
+        consultado: casas.consultado,
+        contornos: casas.casas,
       },
       capaChunk: resumen.puede_sembrar ? 'textura' : 'regla',
     });
@@ -235,10 +266,7 @@ export class JuninController {
   abrirEn3D(): string | null {
     const { chunks, nucleo, ubicacion, escenario, campana, cultivo } = get();
     if (!chunks || !nucleo || !ubicacion) return 'Primero dibuja una parcela.';
-    const mensajes = Object.fromEntries(
-      Object.entries(nucleo.reglas.worldcover).map(([k, v]) => [k, `${v.nombre}: ${v.mensaje}`]),
-    );
-    const p = parcelaParaSimulador(chunks, container.terrains.clases(), mensajes);
+    const p = parcelaParaSimulador(chunks, container.terrains.clases());
     const terreno = new TerrainProfile(p.dominante, p.reaccion, p.config, SoilMix.de(p.mezcla), 'manchas');
 
     // Clima: los 12 meses de la campaña del escenario elegido, como escenario de la app
@@ -277,8 +305,11 @@ export class JuninController {
       cultivo: cultivo ? (CULTIVO_SIMULADOR[cultivo] ?? null) : null,
       mensaje: {
         tipo: 'ok',
-        texto: `Parcela real de Junín cargada: ${p.config.rows}×${p.config.cols} chunks de ${chunks.celda_m} m (relieve ×3). ${p.celdasBloqueadas} celdas bloqueadas (fuera del polígono o en ciudad/agua/nieve).`,
-        detalle: p.recorte ? ['La parcela era más grande que 100×100 chunks: se recortó.'] : undefined,
+        texto: `Parcela real de Junín cargada: chunks de ${chunks.celda_m} m (relieve ×3). Solo se dibuja tu polígono; ${p.celdasBloqueadas} celdas bloqueadas o sin dato quedan como losas planas y no aceptan acciones.`,
+        detalle: [
+          `Supuestos del simulador (no son datos medidos): P ${SUPUESTOS_SIMULADOR.p}, K ${SUPUESTOS_SIMULADOR.k} y humedad inicial ${SUPUESTOS_SIMULADOR.humedad} %.`,
+          ...(p.recorte ? ['La parcela era más grande que 100×100 chunks: se recortó.'] : []),
+        ],
       },
     });
     set({ modo: 'simulador' });

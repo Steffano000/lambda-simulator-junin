@@ -16,7 +16,7 @@ export interface ResultadoJunin {
 }
 
 export function useResultadoJunin(): ResultadoJunin | null {
-  const { nucleo, ubicacion, escenario, cultivo, anterior, campana, chunks, area_ha } = useJuninStore(
+  const { nucleo, ubicacion, escenario, cultivo, anterior, campana, chunks } = useJuninStore(
     useShallow((s) => ({
       nucleo: s.nucleo,
       ubicacion: s.ubicacion,
@@ -25,7 +25,6 @@ export function useResultadoJunin(): ResultadoJunin | null {
       anterior: s.anterior,
       campana: s.campana,
       chunks: s.chunks,
-      area_ha: s.area_ha,
     })),
   );
   return useMemo(() => {
@@ -34,7 +33,7 @@ export function useResultadoJunin(): ResultadoJunin | null {
     if (!r) return null;
     const eco = nucleo.catalogo.cultivos[cultivo]?.ecocrop;
     const phRef = nucleo.sim.puntos[ubicacion.punto]?.suelo.ph ?? null;
-    const rc = chunks ? rendimientoPorChunk(chunks, r.rend_t_ha, eco, area_ha, phRef) : null;
+    const rc = chunks ? rendimientoPorChunk(chunks, r.rend_t_ha, eco, phRef) : null;
     return { r, rc, nombre: nucleo.catalogo.cultivos[cultivo]?.nombre ?? cultivo };
-  }, [nucleo, ubicacion, escenario, cultivo, anterior, campana, chunks, area_ha]);
+  }, [nucleo, ubicacion, escenario, cultivo, anterior, campana, chunks]);
 }
