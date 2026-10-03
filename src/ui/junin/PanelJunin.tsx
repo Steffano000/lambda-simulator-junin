@@ -19,6 +19,7 @@ import {
   MOTOR_ETIQUETA,
   opcionesTamano,
   type CapaDato,
+  type Severidad,
   PENALIZACION_ADVERTENCIA,
   UMBRAL_COBERTURA_PCT,
 } from '@/domain/junin';
@@ -35,7 +36,7 @@ import {
   OVERLAYS_NASA,
 } from './colores';
 import { GraficoEscenario } from './GraficoEscenario';
-import { useResultadoJunin } from './useJunin';
+import { useResultadoJunin, type ResultadoJunin } from './useJunin';
 
 function Paso({
   n,
@@ -123,6 +124,84 @@ function ResolucionEfectiva({ r }: { r: ResumenResolucion }) {
           {a}
         </p>
       ))}
+    </div>
+  );
+}
+
+const ICONO_SEV: Record<Severidad, string> = { bloqueo: '⛔', advertencia: '⚠', info: '▫' };
+const COLOR_SEV: Record<Severidad, string> = {
+  bloqueo: 'text-ui-danger',
+  advertencia: 'text-amber-700',
+  info: 'text-ui-ink-muted',
+};
+const ESTADO_SIEMBRA = {
+  apta: ['bg-green-100 text-green-900', 'Apta para sembrar'],
+  con_advertencias: ['bg-amber-100 text-amber-900', 'Apta, con advertencias'],
+  no_apta: ['bg-red-100 text-red-900', 'No apta'],
+} as const;
+
+/** Paso 8b (Fase 3): todas las condiciones de siembra del cultivo elegido, con el dato usado */
+function CondicionesPlantacion({ res }: { res: ResultadoJunin }) {
+  const ev = res.ev!;
+  const [clase, titulo] = ESTADO_SIEMBRA[ev.estado];
+  const m = ev.marco;
+  return (
+    <div>
+      <div className={`mb-2 rounded px-2 py-1 font-semibold ${clase}`}>
+        {titulo}: {res.nombre}
+        <span className="ml-1 font-normal">
+          · confianza {ev.confianza.nivel} ({ev.confianza.distancia_km} km al punto con datos)
+        </span>
+      </div>
+      <ul className="space-y-1">
+        {ev.razones.map((r) => (
+          <li key={r.codigo} className={`text-2xs ${COLOR_SEV[r.severidad]}`} title={r.fuente ?? ''}>
+            {ICONO_SEV[r.severidad]} {r.mensaje_es}
+            <span className="block pl-4 text-ui-ink-muted">Dato: {r.dato_usado}</span>
+          </li>
+        ))}
+      </ul>
+      {ev.correccion.aplicada && ev.meses.length > 0 && (
+        <table className="mt-2 w-full text-2xs">
+          <thead className="text-ui-ink-muted">
+            <tr>
+              <th className="text-left font-normal">Mes</th>
+              <th className="text-right font-normal">Tmín punto</th>
+              <th className="text-right font-normal">Tmín parcela</th>
+              <th className="text-right font-normal">Tmed parcela</th>
+            </tr>
+          </thead>
+          <tbody>
+            {ev.meses.map((x) => (
+              <tr key={x.mes}>
+                <td>{x.mes}</td>
+                <td className="value text-right">{x.tmin_punto.toFixed(1)}</td>
+                <td className="value text-right">{x.tmin_parcela.toFixed(1)}</td>
+                <td className="value text-right">{x.tmed_parcela.toFixed(1)}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
+      {m && (
+        <div className="mt-2 rounded border border-ui-border p-2 text-2xs">
+          <div className="font-semibold">Marco de plantación · {m.variedad}</div>
+          {m.plantas_m2 != null ? (
+            <p>
+              {m.entre_surcos_m != null && `Surcos a ${m.entre_surcos_m} m`}
+              {m.entre_plantas_m != null && `, golpes a ${m.entre_plantas_m} m`} →{' '}
+              <b>{m.plantas_m2} plantas/m²</b> ({Math.round(m.plantas_m2 * 10_000).toLocaleString('es-PE')}
+              /ha)
+              {res.kg_planta != null && ` · ${res.kg_planta} kg por planta`}.
+            </p>
+          ) : (
+            <p>
+              Siembra {m.metodo}: {m.semilla_kg_ha ?? '—'} kg de semilla/ha; no se cuentan plantas.
+            </p>
+          )}
+          <p className="mt-1 text-ui-ink-muted">Fuente: {m.fuente}</p>
+        </div>
+      )}
     </div>
   );
 }
@@ -657,13 +736,34 @@ export function PanelJunin() {
         )}
       </Paso>
 
+      {res?.ev && (
+        <Paso n="8b" titulo="Condiciones de plantación">
+          <CondicionesPlantacion res={res} />
+        </Paso>
+      )}
+
       <Paso n="9-11" titulo="Motor de simulación y resultado" apagado={!res}>
         {listo && s.cultivo && !res && (
           <p className="text-ui-ink-muted">
             No hay rendimiento de referencia para este cultivo en la provincia.
           </p>
         )}
-        {res && (
+        {res?.ev?.estado === 'no_apta' && (
+          <div className="rounded bg-red-100 px-2 py-1 text-red-900">
+            <p className="font-semibold">
+              No se calcula el rendimiento: {res.nombre.toLowerCase()} no es apto aquí.
+            </p>
+            {res.ev.razones
+              .filter((r) => r.severidad === 'bloqueo')
+              .map((r) => (
+                <p key={r.codigo} className="text-2xs">
+                  ⛔ {r.mensaje_es}
+                </p>
+              ))}
+            <p className="mt-1 text-2xs">Elige otro cultivo o mira las condiciones en el paso 8b.</p>
+          </div>
+        )}
+        {res && res.ev?.estado !== 'no_apta' && (
           <>
             <div className="mb-2 flex flex-wrap items-center gap-1">
               <span className="rounded bg-ui-panel-2 px-1.5 py-0.5 text-2xs font-semibold">
@@ -706,8 +806,23 @@ export function PanelJunin() {
             {res.r.componentes.aptitud != null && (
               <Dato k="× Aptitud EcoCrop" v={res.r.componentes.aptitud.toFixed(2)} />
             )}
+            {res.ev && res.ev.factor_helada < 1 && (
+              <Dato k="× Helada (temperatura corregida por altura)" v={res.ev.factor_helada.toFixed(2)} />
+            )}
             {res.rc && (
               <Dato k="× Chunks (uso de suelo y pH vs. el punto)" v={res.rc.factor_parcela.toFixed(2)} />
+            )}
+            {res.ev?.confianza.rango_t_ha && res.rc && res.ev.confianza.nivel !== 'alta' && (
+              <Dato
+                k={`Rango (confianza ${res.ev.confianza.nivel}, ${res.ev.confianza.distancia_km} km)`}
+                v={`${(res.ev.confianza.rango_t_ha[0] * (res.rc.rend_parcela_t_ha / res.r.rend_t_ha)).toFixed(2)}–${(res.ev.confianza.rango_t_ha[1] * (res.rc.rend_parcela_t_ha / res.r.rend_t_ha)).toFixed(2)} t/ha`}
+              />
+            )}
+            {res.ev?.marco?.plantas_m2 != null && res.rc && (
+              <Dato
+                k={`Plantas (${res.ev.marco.variedad})`}
+                v={`${Math.round(res.ev.marco.plantas_m2 * res.rc.area_ha * 10_000).toLocaleString('es-PE')} · ${res.kg_planta?.toFixed(2) ?? '—'} kg/planta`}
+              />
             )}
             {res.r.referencia_aquacrop_t_ha != null && res.r.motor === 'balance_fao56' && (
               <Dato
@@ -785,7 +900,7 @@ export function PanelJunin() {
       </Paso>
 
       <Paso n={12} titulo="Rotación (2 campañas)" apagado={!res && !s.plan.length}>
-        {res && (
+        {res && res.ev?.estado !== 'no_apta' && (
           <button
             className="btn w-full justify-center"
             onClick={() =>
@@ -793,7 +908,7 @@ export function PanelJunin() {
                 res.r,
                 res.nombre,
                 res.rc?.produccion_t ?? 0,
-                res.rc?.rend_parcela_t_ha ?? res.r.rend_t_ha,
+                res.rc?.rend_parcela_t_ha ?? res.rend_t_ha,
               )
             }
           >

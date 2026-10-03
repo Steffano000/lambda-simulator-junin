@@ -79,3 +79,26 @@ export interface Meta {
   unidades: Record<string, string>;
   fuentes: string[];
 }
+
+/** data/siembra_cultivos.json: marco de plantación y rango de altitud con su fuente (Fase 3) */
+export interface SiembraCultivo {
+  nombre_3d: string | null;
+  variedad: string;
+  metodo: string;
+  entre_surcos_m: number | null;
+  entre_plantas_m: number | null;
+  plantas_por_golpe: number | null;
+  plantas_m2: number | null;
+  semilla_kg_ha: number | null;
+  fuente_marco: string;
+  altitud_variedad: [number, number] | null;
+  fuente_altitud_variedad: string | null;
+  altitud_cultivo: [number | null, number | null] | null;
+  fuente_altitud_cultivo: string | null;
+}
+
+export interface SiembraCultivos {
+  descripcion: string;
+  notas: string[];
+  cultivos: Record<string, SiembraCultivo>;
+}

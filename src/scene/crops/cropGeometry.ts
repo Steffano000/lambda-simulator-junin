@@ -26,8 +26,9 @@ const local = new THREE.Matrix4();
 const planta = new THREE.Matrix4();
 
 /**
- * Matriz de mundo de una pieza: celda (x, y, z) → giro propio de la planta (`yaw`) →
- * posición, rotación y escala de la pieza.
+ * Matriz de mundo de una pieza: celda (x, y, z) → giro propio de la planta (`yaw`) y su
+ * tamaño (`escala`, < 1 cuando hay varias plantas en la celda) → posición, rotación y escala
+ * de la pieza.
  */
 export function matrizPieza(
   p: Pieza,
@@ -36,10 +37,13 @@ export function matrizPieza(
   z: number,
   yaw: number,
   out = new THREE.Matrix4(),
+  escala = 1,
 ) {
   tmpRot.set(p.rot[0], p.rot[1], p.rot[2], 'YXZ');
   local.compose(tmpPos.set(...p.pos), tmpQuat.setFromEuler(tmpRot), tmpEsc.set(...p.esc));
-  planta.makeRotationY(yaw).setPosition(x, y, z);
+  planta.makeRotationY(yaw);
+  if (escala !== 1) planta.scale(tmpEsc.set(escala, escala, escala));
+  planta.setPosition(x, y, z);
   return out.multiplyMatrices(planta, local);
 }
 

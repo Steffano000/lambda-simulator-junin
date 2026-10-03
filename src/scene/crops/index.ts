@@ -17,3 +17,4 @@ export {
 export { PlantField, type PlantFieldProps, type PlantaEnCelda } from './PlantField';
 export { PlantsLayer, type PlantsLayerProps } from './PlantsLayer';
 export { PreviewPlantsLayer } from './PreviewPlantsLayer';
+export { disposicionPlantas, plantasM2, MAX_PLANTAS_ESCENA, type Disposicion } from './plantLayout';

@@ -67,6 +67,8 @@ export interface TileNode {
    * real la celda mide 1 m² (design.md §1). Insumos, agua y cosecha se multiplican por ella.
    */
   areaM2?: number;
+  /** Parcela real: lado de la celda en metros (tamaño de chunk); 1 m si no */
+  ladoM?: number;
   /**
    * Parcela real: rendimiento del motor de Junín (t/ha) para cada cultivo del 3D en esta celda
    * (escenario, campaña y cultivo anterior elegidos; × uso de suelo y pH del chunk).

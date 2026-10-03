@@ -8,8 +8,10 @@ import * as THREE from 'three';
 import type { TileNode } from '@/domain/grid';
 import { InstanceField, getMaterial, type MaterialCategory } from '@/scene/render';
 import { tileCenter, tileSurfaceY, type GridOffset } from '@/scene/tiles';
+import { SiembraRepository } from '@/data';
 import { FORMAS, GEOMETRIA, matrizPieza, yawDe } from './cropGeometry';
 import { modeloPlanta, type EstadoPlanta, type Forma } from './cropModels';
+import { disposicionPlantas, MAX_PLANTAS_ESCENA } from './plantLayout';
 
 export interface PlantaEnCelda {
   tile: TileNode;
@@ -34,13 +36,30 @@ export interface PlantFieldProps {
 export function PlantField({ plantas, offset, material = 'planta' }: PlantFieldProps) {
   const porForma = useMemo(() => {
     const grupos: Record<Forma, PiezaMundo[]> = { caja: [], cono: [], cilindro: [], esfera: [] };
-    for (const { tile, cultivo, estado } of plantas) {
+    // Fase 3: varias plantas por celda según el marco de plantación (INIA) y el tamaño de la celda
+    const disp = (p: PlantaEnCelda, muestra: number) =>
+      disposicionPlantas(
+        SiembraRepository.byNombre3D(p.cultivo),
+        p.tile.ladoM ?? 1,
+        p.tile.areaM2 ?? 1,
+        muestra,
+      );
+    const total = plantas.reduce((a, p) => a + disp(p, 1).pos.length, 0);
+    const muestra = Math.min(1, MAX_PLANTAS_ESCENA / Math.max(1, total));
+    for (const p of plantas) {
+      const { tile, cultivo, estado } = p;
       const { x, z } = tileCenter(tile, offset);
       const y = tileSurfaceY(tile);
-      const yaw = yawDe(tile.id);
-      for (const pieza of modeloPlanta(cultivo, estado)) {
-        grupos[pieza.forma].push({ matrix: matrizPieza(pieza, x, y, z, yaw), color: pieza.color });
-      }
+      const d = disp(p, muestra);
+      const piezas = modeloPlanta(cultivo, estado);
+      d.pos.forEach(([dx, dz], k) => {
+        const yaw = yawDe(`${tile.id}#${k}`);
+        for (const pieza of piezas)
+          grupos[pieza.forma].push({
+            matrix: matrizPieza(pieza, x + dx, y, z + dz, yaw, undefined, d.escala),
+            color: pieza.color,
+          });
+      });
     }
     return grupos;
   }, [plantas, offset]);

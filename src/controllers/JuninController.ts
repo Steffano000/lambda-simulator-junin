@@ -3,6 +3,7 @@
  * arma la grilla de chunks (local o servidor), la rotación y el paso al simulador 3D.
  */
 import { container } from '@/app/container';
+import { SiembraRepository } from '@/data';
 import { JuninRepository } from '@/data/junin';
 import { casasEnVivo } from '@/data/junin/osm';
 import { chunksDelServidor, servidorDisponible } from '@/data/junin/servidor';
@@ -24,6 +25,7 @@ import {
   parcelaParaSimulador,
   pisoEcologico,
   puntoMasCercano,
+  evaluarSiembra,
   rendimiento,
   rendimientoPorChunk,
   resumirParcela,
@@ -308,12 +310,31 @@ export class JuninController {
     // la cosecha del 3D = este número × salud de la celda × área real de la celda
     const pp = nucleo.sim.puntos[ubicacion.punto];
     const rendJunin: Record<string, (number | null)[]> = {};
+    const noAptos: string[] = [];
+    const { resumen } = get();
     for (const [id, nombre3D] of Object.entries(CULTIVO_SIMULADOR)) {
       const r = rendimiento(ubicacion.punto, escenario, id, get().anterior, nucleo, campana);
       if (!r) continue;
+      // Condiciones de plantación (Fase 3): si no es apto, su cosecha en 3D es 0
+      const ev = resumen
+        ? evaluarSiembra({
+            cultivo: id,
+            escenario,
+            campana,
+            anterior: get().anterior,
+            punto: ubicacion.punto,
+            distancia_km: ubicacion.distancia_km,
+            chunks,
+            resumen,
+            nucleo,
+            siembra: SiembraRepository.all(),
+          })
+        : null;
+      if (ev?.estado === 'no_apta') noAptos.push(nombre3D);
+      const factor = ev?.estado === 'no_apta' ? 0 : (ev?.factor_helada ?? 1);
       rendJunin[nombre3D] = rendimientoPorChunk(
         chunks,
-        r.rend_t_ha,
+        r.rend_t_ha * factor,
         nucleo.catalogo.cultivos[id]?.ecocrop,
         pp?.suelo.ph ?? null,
       ).porChunk;
@@ -360,6 +381,11 @@ export class JuninController {
         texto: `Parcela real de Junín cargada: chunks de ${chunks.celda_m} m (relieve ×3). Solo se dibuja tu polígono; ${p.celdasBloqueadas} celdas bloqueadas o sin dato quedan como losas planas y no aceptan acciones.`,
         detalle: [
           `Cada celda mide ${chunks.celda_m} × ${chunks.celda_m} m (${chunks.celda_m ** 2} m²; las del borde, solo la parte dentro del polígono). La cosecha = rendimiento del motor de Junín de esa celda (el mismo del panel) × su salud × su área; insumos y agua también van por m² reales.`,
+          ...(noAptos.length
+            ? [
+                `No aptos en esta parcela (condiciones de plantación): ${noAptos.join(', ')}. Si los siembras, su cosecha será 0.`,
+              ]
+            : []),
           ...(cultivo && !CULTIVO_SIMULADOR[cultivo]
             ? [
                 `${nucleo.catalogo.cultivos[cultivo]?.nombre ?? cultivo} no se simula en 3D: aquí puedes sembrar ${Object.values(CULTIVO_SIMULADOR).join(', ').toLowerCase()}, cada uno con su rendimiento del motor de Junín para esta parcela.`,

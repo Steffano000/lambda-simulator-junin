@@ -4,6 +4,8 @@
  */
 import { useMemo } from 'react';
 import { useDetalleCultivo } from '@/controllers/hooks';
+import { SiembraRepository } from '@/data';
+import { marcoDe, plantasEnCelda } from '@/domain/junin';
 import type { EtapaVisual } from '@/domain/crops';
 import type { TileNode } from '@/domain/grid';
 import type { EfectoHidrico } from '@/domain/hydrology';
@@ -162,6 +164,32 @@ export function CropPanel({ tile }: { tile: TileNode }) {
           value={d.rendimientoRefKg.toFixed(2)}
           unit="kg/m²"
         />
+        {(() => {
+          // Fase 3: plantas reales en la celda según el marco de plantación (INIA)
+          const m = marcoDe(SiembraRepository.byNombre3D(d.cultivo));
+          const n = plantasEnCelda(m, d.areaM2);
+          if (!m) return null;
+          return n != null ? (
+            <>
+              <Fila
+                label={`Plantas en la celda (${m.plantas_m2}/m², ${m.variedad})`}
+                value={String(n)}
+                unit="plantas"
+              />
+              <Fila
+                label="Por planta, con la salud actual"
+                value={((d.rendimientoEstimadoKg * d.areaM2) / Math.max(1, n)).toFixed(3)}
+                unit="kg"
+              />
+            </>
+          ) : (
+            <Fila
+              label={`Siembra ${m.metodo} (${m.variedad})`}
+              value={String(m.semilla_kg_ha ?? '—')}
+              unit="kg semilla/ha"
+            />
+          );
+        })()}
         {d.areaM2 !== 1 && (
           <Fila
             label={`En esta celda (${d.areaM2.toFixed(1)} m²)`}

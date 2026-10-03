@@ -581,3 +581,111 @@ describe('El 3D cosecha lo mismo que el panel del mapa', () => {
     expect(kg / 1000).toBeGreaterThan(r.rend_t_ha * ha * 0.9); // no 4 veces menos
   });
 });
+
+describe('Fase 3: condiciones de plantación', () => {
+  const evaluar = async (lat: number, lon: number, lado: number, cultivo: string) => {
+    const { construirChunks, cuadrado, resumirParcela, centroide } = await import('./parcela');
+    const { evaluarSiembra } = await import('./condiciones');
+    const { SiembraRepository } = await import('@/data');
+    const grilla = (await fuente.grillaJunin()) as GrillaCapas;
+    const parcelas = await Promise.all(n.puntos.map((p) => fuente.parcela(p.id)));
+    const anillo = cuadrado(lat, lon, lado);
+    const g = construirChunks(anillo, { grilla, parcelas, reglas: n.reglas });
+    const c = centroide(anillo);
+    const punto = puntoMasCercano(c.lat, c.lon, n.sim);
+    const pp = n.sim.puntos[punto];
+    const d = Math.hypot(
+      (pp.lat - c.lat) * 111.32,
+      (pp.lon - c.lon) * 111.32 * Math.cos((c.lat * Math.PI) / 180),
+    );
+    const entrada = {
+      cultivo,
+      escenario: 'normal' as const,
+      campana: 0,
+      anterior: null,
+      punto,
+      distancia_km: d,
+      chunks: g,
+      resumen: resumirParcela(g, n.reglas),
+      nucleo: n,
+      siembra: SiembraRepository.all(),
+    };
+    return { ev: evaluarSiembra(entrada), entrada, evaluarSiembra };
+  };
+  const codigos = (ev: { razones: { codigo: string }[] }) => ev.razones.map((r) => r.codigo);
+
+  it('gradiente térmico calculado con los 10 puntos (no un valor de libro)', async () => {
+    const { gradienteTermico } = await import('./condiciones');
+    const gt = gradienteTermico(n, 'normal');
+    expect(gt.n_puntos).toBe(10);
+    expect(gt.tmed_c_km).toBeGreaterThan(-6);
+    expect(gt.tmed_c_km).toBeLessThan(-3.5);
+    expect(gt.r_tmed).toBeLessThan(-0.95);
+  });
+
+  it('marco de plantación INIA: plantas por m² y por celda, con fuente', async () => {
+    const { marcoDe, plantasEnCelda, kgPorPlanta } = await import('./condiciones');
+    const { SiembraRepository } = await import('@/data');
+    const m = (id: string) => marcoDe(SiembraRepository.byId(id));
+    expect(m('papa')!.plantas_m2).toBeCloseTo(3.7, 1); // 0.9 × 0.3 m
+    expect(m('maiz_amilaceo')!.plantas_m2).toBe(5); // 50 000 plantas/ha
+    expect(m('quinua')!.plantas_m2).toBe(50);
+    expect(m('cebada')!.plantas_m2).toBeNull(); // al voleo: no se inventa
+    expect(plantasEnCelda(m('maiz_amilaceo'), 4)).toBe(20); // celda de 2 m
+    expect(kgPorPlanta(m('papa'), 18.5)).toBeCloseTo(0.5, 1);
+    for (const c of Object.values(SiembraRepository.all().cultivos))
+      expect(c.fuente_marco).toMatch(/INIA|FAO/);
+  });
+
+  it('Huayao 9 ha, papa: apta (con advertencias) y sin corrección por altura', async () => {
+    const { ev } = await evaluar(-12.0383, -75.3228, 300, 'papa');
+    expect(ev.estado).not.toBe('no_apta');
+    expect(ev.correccion.aplicada).toBe(false);
+    expect(ev.confianza.nivel).toBe('alta');
+    expect(codigos(ev)).toContain('ALTITUD_OK');
+  });
+
+  it('1 ha en Suni cerca de Jauja (3 516 m): apta, fuera del rango de Canchán (advertencia)', async () => {
+    const { ev } = await evaluar(-11.78, -75.54, 100, 'papa');
+    expect(ev.estado).toBe('con_advertencias');
+    expect(codigos(ev)).toContain('ALTITUD_FUERA_VARIEDAD');
+  });
+
+  it('0.43 ha urbana en Huancayo sigue bloqueada', async () => {
+    const { ev } = await evaluar(-12.0651, -75.2049, 66, 'papa');
+    expect(ev.estado).toBe('no_apta');
+    expect(ev.razones[0].codigo).toBe('USO_SUELO');
+  });
+
+  it('puna a 4 400 m: temperatura corregida por altura → helada letal → no apta', async () => {
+    const { ev } = await evaluar(-11.6, -75.4, 200, 'papa');
+    expect(ev.correccion.aplicada).toBe(true);
+    expect(ev.correccion.dif_altura_m!).toBeGreaterThan(300);
+    expect(ev.meses[0].tmin_parcela).toBeLessThan(ev.meses[0].tmin_punto);
+    expect(codigos(ev)).toContain('HELADA');
+    expect(ev.estado).toBe('no_apta');
+    expect(ev.confianza.nivel).toBe('media');
+    expect(ev.confianza.rango_t_ha![0]).toBeLessThan(ev.confianza.rango_t_ha![1]);
+  });
+
+  it('haba en La Merced (800 m): fuera del rango del cultivo (2 500-4 000 m) → no apta', async () => {
+    const { ev } = await evaluar(-11.05, -75.33, 200, 'haba');
+    expect(codigos(ev)).toContain('ALTITUD_FUERA_CULTIVO');
+    expect(ev.estado).toBe('no_apta');
+  });
+
+  it('pendiente: > 30° en más de la mitad del área bloquea; > 15° advierte', async () => {
+    const { entrada, evaluarSiembra } = await evaluar(-12.0383, -75.3228, 100, 'papa');
+    const conPendiente = (grados: number) => ({
+      ...entrada,
+      chunks: {
+        ...entrada.chunks,
+        chunks: entrada.chunks.chunks.map((c) => ({ ...c, pendiente_grados: grados })),
+      },
+    });
+    expect(codigos(evaluarSiembra(conPendiente(35)))).toContain('PENDIENTE_BLOQUEO');
+    expect(evaluarSiembra(conPendiente(35)).estado).toBe('no_apta');
+    expect(codigos(evaluarSiembra(conPendiente(20)))).toContain('PENDIENTE_ADVERTENCIA');
+    expect(codigos(evaluarSiembra(conPendiente(5)))).not.toContain('PENDIENTE_ADVERTENCIA');
+  });
+});

@@ -69,3 +69,19 @@ describe('cropModels', () => {
     expect(modeloPlanta('Tomate', estado('media', 0.6)).length).toBeGreaterThan(1);
   });
 });
+
+describe('Fase 3: varias plantas por celda (marco INIA)', () => {
+  it('papa en celda de 1 m: un surco con 3 plantas; en 2 m: 2 surcos × 7', async () => {
+    const { disposicionPlantas } = await import('./plantLayout');
+    const { SiembraRepository } = await import('@/data');
+    const papa = SiembraRepository.byNombre3D('Papa');
+    expect(disposicionPlantas(papa, 1, 1).pos).toHaveLength(3);
+    const d2 = disposicionPlantas(papa, 2, 4);
+    expect(d2.pos).toHaveLength(14);
+    expect(d2.reales).toBe(15); // 3.7 plantas/m² × 4 m²
+    expect(disposicionPlantas(papa, 2, 4, 0.25).pos.length).toBeLessThanOrEqual(4); // muestra
+    const maiz = disposicionPlantas(SiembraRepository.byNombre3D('Maíz amiláceo'), 1, 1);
+    expect(maiz.pos).toHaveLength(4); // 2 plantas por golpe, golpes a 0.5 m
+    expect(disposicionPlantas(undefined, 1, 1).pos).toHaveLength(1); // sin marco: 1 planta
+  });
+});

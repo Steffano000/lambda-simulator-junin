@@ -1,0 +1,101 @@
+{
+  "descripcion": "Marco de plantación y rango de altitud por cultivo (Fase 3). Cada número trae su fuente; null = sin dato (no se inventa).",
+  "notas": [
+    "altitud_variedad: rango de adaptación de la variedad de referencia (ficha INIA). Fuera de él se advierte.",
+    "altitud_cultivo: rango del cultivo en el Perú según la fuente citada. Fuera de él la siembra no es apta.",
+    "plantas_m2 = plantas por golpe / (distancia entre surcos × distancia entre golpes), salvo que la fuente dé la densidad directa.",
+    "Siembra al voleo: no hay surcos ni plantas contadas; solo kg de semilla por hectárea."
+  ],
+  "cultivos": {
+    "papa": {
+      "nombre_3d": "Papa",
+      "variedad": "INIA 303 Canchán",
+      "metodo": "surcos",
+      "entre_surcos_m": 0.9,
+      "entre_plantas_m": 0.3,
+      "plantas_por_golpe": 1,
+      "plantas_m2": null,
+      "semilla_kg_ha": null,
+      "fuente_marco": "INIA. Papa INIA 303 - Canchán (ficha técnica): «surcos distanciados a 0,9 m y entre plantas a 0,3 m». https://www.inia.gob.pe/wp-content/uploads/investigacion/programa/sistProductivo/variedad/papa/INIA_303.pdf",
+      "altitud_variedad": [2000, 3500],
+      "fuente_altitud_variedad": "INIA 303 Canchán: «sierra media, 2 000 a 3 500 metros de altitud».",
+      "altitud_cultivo": [null, 4500],
+      "fuente_altitud_cultivo": "MINAM (2018). Identificación de las alternativas a los cultivares comerciales de papa con eventos OVM: «el 90 % de la papa cultivada en el Perú está en la sierra, entre 3 000 y 4 500 msnm». https://bioseguridad.minam.gob.pe/wp-content/uploads/2019/09/AlternativasOVMpapa_final.pdf"
+    },
+    "maiz_amilaceo": {
+      "nombre_3d": "Maíz amiláceo",
+      "variedad": "INIA 603 Choclero",
+      "metodo": "surcos",
+      "entre_surcos_m": 0.8,
+      "entre_plantas_m": 0.5,
+      "plantas_por_golpe": 2,
+      "plantas_m2": null,
+      "semilla_kg_ha": 50,
+      "fuente_marco": "INIA. Maíz INIA 603 - Choclero (ficha técnica): surcos a 0,8 m, 0,5 m entre golpes, 3 semillas/golpe, «50 000 plantas/ha con 2 plantas por golpe», 50 kg/ha de semilla. https://www.inia.gob.pe/wp-content/uploads/investigacion/programa/sistProductivo/variedad/maiz-amilaceo/INIA_603.pdf",
+      "altitud_variedad": [2600, 3000],
+      "fuente_altitud_variedad": "INIA 603 Choclero: «entre 2 600 y 3 000 metros de altitud».",
+      "altitud_cultivo": [null, 3500],
+      "fuente_altitud_cultivo": "Ventura-Román, A. et al. (2021). Producción y comercialización del cultivo del maíz amiláceo. Polo del Conocimiento 6(9): 316-333: «crece del nivel del mar hasta los 3 500 m.s.n.m.». https://dialnet.unirioja.es/descarga/articulo/8094581.pdf"
+    },
+    "quinua": {
+      "nombre_3d": "Quinua",
+      "variedad": "Salcedo INIA",
+      "metodo": "chorro continuo en surcos",
+      "entre_surcos_m": 0.8,
+      "entre_plantas_m": null,
+      "plantas_por_golpe": null,
+      "plantas_m2": 50,
+      "semilla_kg_ha": 15,
+      "fuente_marco": "Gómez, L. y Aguilar, E. (2016). Guía de cultivo de la quinua. FAO y UNALM, p. 53: «50 plantas por metro lineal; aproximadamente unas 500 000 plantas por hectárea». Surcos de 60 a 80 cm en valles y 15 kg/ha a mano: INIA, Quinua Salcedo INIA (ficha técnica). https://www.inia.gob.pe/wp-content/uploads/investigacion/programa/sistProductivo/variedad/quinua/Quinua-Salcedo.pdf",
+      "altitud_variedad": [1284, 3950],
+      "fuente_altitud_variedad": "Quinua Salcedo INIA: adaptada «entre 1 284 a 3 950 msnm».",
+      "altitud_cultivo": [null, 4000],
+      "fuente_altitud_cultivo": "Gómez, L. y Aguilar, E. (2016). Guía de cultivo de la quinua (FAO, UNALM): zonas de cultivo desde el nivel del mar hasta 4 000 m s.n.m."
+    },
+    "haba": {
+      "nombre_3d": "Haba (grano seco)",
+      "variedad": "INIA 409 Munay Angélica",
+      "metodo": "surcos",
+      "entre_surcos_m": 0.85,
+      "entre_plantas_m": 0.275,
+      "plantas_por_golpe": 3,
+      "plantas_m2": null,
+      "semilla_kg_ha": 110,
+      "fuente_marco": "INIA. Haba INIA 409 Munay Angélica (ficha técnica): surcos de 80 a 90 cm, 25 a 30 cm entre sitios, 3 semillas por golpe (se asume que emergen las 3), 100 a 120 kg/ha (se usa el punto medio). https://www.inia.gob.pe/wp-content/uploads/investigacion/programa/sistProductivo/variedad/haba/INIA_409.pdf",
+      "altitud_variedad": null,
+      "fuente_altitud_variedad": null,
+      "altitud_cultivo": [2500, 4000],
+      "fuente_altitud_cultivo": "INIA 409 (ficha técnica): el haba se cultiva «desde los 2 500 hasta los 4 000 m de altitud»."
+    },
+    "cebada": {
+      "nombre_3d": null,
+      "variedad": "INIA 416 La Milagrosa",
+      "metodo": "voleo",
+      "entre_surcos_m": null,
+      "entre_plantas_m": null,
+      "plantas_por_golpe": null,
+      "plantas_m2": null,
+      "semilla_kg_ha": 140,
+      "fuente_marco": "INIA. Cebada INIA 416 - La Milagrosa (ficha técnica): «siembra al voleo», 140 kg/ha. https://www.inia.gob.pe/wp-content/uploads/investigacion/programa/sistProductivo/variedad/cebada/INIA_416.pdf",
+      "altitud_variedad": [2500, 3800],
+      "fuente_altitud_variedad": "INIA 416 La Milagrosa: «desde los 2 500 a 3 800 msnm».",
+      "altitud_cultivo": null,
+      "fuente_altitud_cultivo": null
+    },
+    "avena_forrajera": {
+      "nombre_3d": "Avena forrajera",
+      "variedad": "INIA 901 Mantaro 15M",
+      "metodo": "voleo",
+      "entre_surcos_m": null,
+      "entre_plantas_m": null,
+      "plantas_por_golpe": null,
+      "plantas_m2": null,
+      "semilla_kg_ha": 75,
+      "fuente_marco": "INIA. Avena forrajera INIA 901 - Mantaro 15M (ficha técnica): 70 a 80 kg/ha para forraje verde (se usa el punto medio). https://www.inia.gob.pe/wp-content/uploads/investigacion/programa/sistProductivo/variedad/avena/INIA_901.pdf",
+      "altitud_variedad": [3200, 4200],
+      "fuente_altitud_variedad": "INIA 901 Mantaro 15M: forraje verde «3 200 hasta los 4 200 msnm».",
+      "altitud_cultivo": null,
+      "fuente_altitud_cultivo": null
+    }
+  }
+}
