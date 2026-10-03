@@ -266,7 +266,7 @@ export function PanelJunin() {
           <>
             <Dato
               k="Chunks"
-              v={`${s.chunks.filas} × ${s.chunks.columnas} de ${s.chunks.celda_m} m (${s.resumen?.n_dentro} dentro)`}
+              v={`${s.chunks.filas} × ${s.chunks.columnas} de ${s.chunks.celda_m} m (${s.resumen?.n_dentro} dentro, ${(((s.resumen?.n_dentro ?? 0) * s.chunks.celda_m ** 2) / 10_000).toFixed(2)} ha)`}
             />
             <Dato
               k="Origen de los datos"
@@ -276,6 +276,22 @@ export function PanelJunin() {
                   : `${s.resumen?.pct_30m}% a 30 m · resto a ~1 km`
               }
             />
+            <details className="mt-1 text-2xs text-ui-ink-muted">
+              <summary className="cursor-pointer">¿Por qué chunks de {s.chunks.celda_m} m?</summary>
+              <p className="mt-1">
+                Se usa el chunk más chico posible sin pasar de 100 × 100 (el límite del simulador 3D): 1 m si
+                la parcela mide hasta 100 m de lado (≈1 ha), 2-5 m hasta 500 m de lado, 10-30 m hasta 3 km.
+              </p>
+              <p className="mt-1">
+                <b>1 m es el mínimo</b>: es el ancho de un surco (papa: 0.9-1.0 m entre surcos) y la celda del
+                simulador 3D. Más chico no corresponde a ninguna labor del agricultor.
+              </p>
+              <p className="mt-1">
+                El dato no es de 1 m: la cobertura se mide a 30 m, el relieve a 90 m (interpolado), el suelo a
+                250 m y el clima a ~10 km. Los chunks de una misma celda de 30 m comparten sus datos; el chunk
+                fino sirve para seguir la forma de tu parcela y medir bien su área.
+              </p>
+            </details>
           </>
         )}
       </Paso>

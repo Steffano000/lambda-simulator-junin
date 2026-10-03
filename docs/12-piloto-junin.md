@@ -24,6 +24,14 @@ Lo que se **ve** viene de NASA en vivo (GIBS). Lo que se **calcula** sale de `pu
 | 11b | 3D                | «Ver la parcela en 3D»: `parcelaParaSimulador()` carga los chunks reales en el simulador 3D | Suelo, pH, MO y relieve (×3) por chunk; clima de la campaña                    |
 | 12  | Rotación          | «Guardar campaña»: el cultivo pasa a ser el anterior de 2027-28                             | `fenologia_cultivos.json`                                                      |
 
+### Tamaño del chunk (justificación)
+
+- **Cálculo a 30 m**: es la resolución del uso de suelo (ESA WorldCover); el relieve es de 90 m (interpolado), el suelo de 250 m y el clima de ~10 km. Ningún dato existe a 1 m.
+- **Representación desde 1 m**: 1 m es el ancho de un surco (papa: 0.9-1.0 m entre surcos) y la celda del simulador 3D (1 m³, `docs/design.md`). Más chico no corresponde a ninguna labor.
+- Se usa el chunk más chico de 1, 2, 3, 5, 6, 10, 15 o 30 m (todos dividen a 30, así cada chunk cae en una sola celda de datos) sin pasar de **100 × 100 chunks**, el límite de la grilla 3D. Parcelas de más de 3 km de lado usan 60, 90… m.
+- Ejemplos: parcela de 90 m de lado → chunks de 1 m; 1 ha (100 m) → 1-2 m; 9 ha (300 m) → 3-5 m; 100 ha → 10-15 m.
+- El chunk fino sigue la forma del polígono: en un rombo de 1 ha el área de los chunks difiere menos de 3 % del área real (test).
+
 ### Rendimiento por chunk
 
 `rendimiento del escenario × uso de suelo × pH relativo`

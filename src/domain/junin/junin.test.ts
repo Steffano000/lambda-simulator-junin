@@ -146,6 +146,25 @@ describe('adaptador al clima de la app', () => {
 });
 
 describe('piloto: parcela dibujada → chunks → rendimiento → 3D', () => {
+  it('el tamaño de chunk se adapta: 1 m en 1 ha, 30 m o más en parcelas grandes', async () => {
+    const { tamanoChunk, cuadrado, construirChunks, areaHa } = await import('./parcela');
+    expect(tamanoChunk(cuadrado(-12, -75.3, 99))).toBe(1);
+    expect(tamanoChunk(cuadrado(-12, -75.3, 290))).toBe(3);
+    expect(tamanoChunk(cuadrado(-12, -75.3, 2500))).toBe(30);
+    expect(tamanoChunk(cuadrado(-12, -75.3, 5000))).toBe(60);
+    // un rombo de 1 ha: los chunks (2 m) cubren su área con menos de 3 % de error
+    const rombo: [number, number][] = [
+      [-75.3228, -12.0374],
+      [-75.3219, -12.0383],
+      [-75.3228, -12.0392],
+      [-75.3237, -12.0383],
+    ];
+    const grilla = (await fuente.grillaJunin()) as GrillaCapas;
+    const g = construirChunks(rombo, { grilla, parcelas: [], reglas: n.reglas });
+    const areaChunks = (g.chunks.filter((c) => c.dentro).length * g.celda_m ** 2) / 10_000;
+    expect(Math.abs(areaChunks - areaHa(rombo)) / areaHa(rombo)).toBeLessThan(0.03);
+  });
+
   it('parcela de 9 ha en Huayao: datos a 30 m, apta y con rendimiento por chunk', async () => {
     const { construirChunks, cuadrado, areaHa, resumirParcela, rendimientoPorChunk } =
       await import('./parcela');
@@ -154,7 +173,8 @@ describe('piloto: parcela dibujada → chunks → rendimiento → 3D', () => {
     const anillo = cuadrado(-12.0383, -75.3228, 300);
     expect(areaHa(anillo)).toBeCloseTo(9, 0);
     const g = construirChunks(anillo, { grilla, parcelas, reglas: n.reglas });
-    expect(g.celda_m).toBe(30);
+    expect(g.celda_m).toBe(5); // 300 m / 100 chunks = 3 m justo; por redondeo pasa a 5 m
+    expect(g.filas * g.columnas).toBeGreaterThan(3000);
     const res = resumirParcela(g, n.reglas);
     expect(res.puede_sembrar).toBe(true);
     expect(res.pct_30m).toBe(100);

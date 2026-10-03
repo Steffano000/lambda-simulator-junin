@@ -36,7 +36,7 @@ export function MapaJunin() {
     protegidas?: L.GeoJSON;
     dibujo?: L.LayerGroup;
     parcela?: L.LayerGroup;
-    chunks?: L.LayerGroup;
+    chunks?: L.Layer;
   }>({ overlays: {} });
   const renderer = useMemo(() => L.canvas({ padding: 0.3 }), []);
   const [hover, setHover] = useState<Chunk | null>(null);
@@ -323,26 +323,29 @@ export function MapaJunin() {
       rendMax: Math.max(0.01, ...(rend ?? []).map((x) => x ?? 0)),
       rend,
     };
-    const cg = L.layerGroup();
-    const { dlat, dlon } = s.chunks;
-    s.chunks.chunks.forEach((c, i) => {
+    // Una imagen con un píxel por chunk (rápido aunque haya 10 000 chunks de 1 m)
+    const g = s.chunks;
+    const lienzo = document.createElement('canvas');
+    lienzo.width = g.columnas;
+    lienzo.height = g.filas;
+    const dib = lienzo.getContext('2d')!;
+    g.chunks.forEach((c, i) => {
       if (!c.dentro) return;
-      const color = colorChunk(c, i, s.capaChunk, ctx);
-      L.rectangle(
-        [
-          [c.lat - dlat / 2, c.lon - dlon / 2],
-          [c.lat + dlat / 2, c.lon + dlon / 2],
-        ],
-        {
-          renderer,
-          stroke: false,
-          fillColor: color ?? '#777',
-          fillOpacity: color ? 0.55 : 0.2,
-          interactive: false,
-        },
-      ).addTo(cg);
+      dib.fillStyle = colorChunk(c, i, s.capaChunk, ctx) ?? '#777777';
+      dib.fillRect(c.columna, c.fila, 1, 1);
     });
+    const [oeste, , , norte] = g.bbox;
+    const cg = L.imageOverlay(
+      lienzo.toDataURL(),
+      [
+        [norte - g.filas * g.dlat, oeste],
+        [norte, oeste + g.columnas * g.dlon],
+      ],
+      { opacity: 0.6, interactive: false },
+    );
     cg.addTo(m);
+    const img = cg.getElement();
+    if (img) img.style.imageRendering = 'pixelated';
     capas.current.chunks = cg;
   }, [s.anillo, s.chunks, s.capaChunk, rend, renderer]);
 
@@ -350,8 +353,8 @@ export function MapaJunin() {
   useEffect(() => {
     const m = mapa.current;
     if (!m || !s.anillo) return;
-    m.fitBounds(L.latLngBounds(s.anillo.map(([lon, lat]) => [lat, lon] as L.LatLngTuple)).pad(0.6), {
-      maxZoom: 16,
+    m.fitBounds(L.latLngBounds(s.anillo.map(([lon, lat]) => [lat, lon] as L.LatLngTuple)).pad(0.4), {
+      maxZoom: 18,
     });
   }, [s.anillo]);
 

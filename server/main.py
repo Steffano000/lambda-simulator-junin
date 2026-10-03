@@ -36,7 +36,9 @@ DATOS = next((Path(c) for c in _CAND if c and Path(c).exists()), REPO / "pipelin
 JSON_APP = REPO / "public" / "data" / "junin" / "app"
 
 CELDA_BASE = 30.0
-MAX_LADO = 60
+CELDA_MIN = 1.0      # un surco / celda del simulador 3D
+MAX_LADO = 100       # límite de la grilla 3D
+PASOS_FINOS = [1, 2, 3, 5, 6, 10, 15, 30]
 M_GRADO = 111_320.0
 WGS84 = CRS.from_epsg(4326)
 CLASES_APP = {"Franco arcillo arenoso": "Franco arcilloso", "Arcilla arenosa": "Arcilla"}
@@ -175,7 +177,11 @@ def parcela(geom: dict):
     oeste, este, sur, norte = min(lons), max(lons), min(lats), max(lats)
     lat0 = (norte + sur) / 2
     lado = max((norte - sur) * M_GRADO, (este - oeste) * M_GRADO * math.cos(math.radians(lat0)))
-    celda = CELDA_BASE * max(1, math.ceil(lado / (CELDA_BASE * MAX_LADO)))
+    ideal = lado / MAX_LADO
+    if ideal <= CELDA_BASE:  # mismo criterio que la app (src/domain/junin/parcela.ts)
+        celda = float(next(p for p in PASOS_FINOS if p >= max(CELDA_MIN, ideal)))
+    else:
+        celda = CELDA_BASE * max(1, math.ceil(lado / (CELDA_BASE * MAX_LADO)))
     dlat = celda / M_GRADO
     dlon = celda / (M_GRADO * math.cos(math.radians(lat0)))
     filas = max(1, math.ceil((norte - sur) / dlat))

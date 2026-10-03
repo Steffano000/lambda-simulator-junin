@@ -6,8 +6,13 @@
  *   - la grilla de Junín a ~1 km (elevación interpolada, el resto de la celda que lo contiene).
  * Fase 2: el servidor (server/main.py) devuelve la misma estructura leyendo los TIF a 30 m.
  *
- * Tamaño de chunk: 30 m (resolución del uso de suelo). Si la parcela es grande, el chunk
- * crece en múltiplos de 30 m para no pasar de MAX_LADO chunks por lado.
+ * Dos escalas, para que sea realista y justificable:
+ * - CÁLCULO a 30 m: es la resolución del uso de suelo; el suelo (250 m), el relieve (90 m) y el
+ *   clima (~10 km) son aún más gruesos. Ningún dato existe a 1 m.
+ * - REPRESENTACIÓN desde 1 m: el ancho de un surco y la celda del simulador 3D. El chunk es el
+ *   más chico posible (1, 2, 3, 5, 6, 10, 15 o 30 m) sin pasar de 100 × 100 chunks; cada chunk
+ *   hereda los datos de la celda de 30 m que lo contiene (la altura se interpola).
+ * Parcelas de más de 3 km de lado usan chunks de 60, 90… m.
  */
 import turfArea from '@turf/area';
 import booleanPointInPolygon from '@turf/boolean-point-in-polygon';
@@ -18,8 +23,17 @@ import { indiceEnGrilla, valorCapa } from './grilla';
 /** Anillo exterior [lon, lat] (no hace falta repetir el primer vértice) */
 export type Anillo = [number, number][];
 
+/** Resolución del dato de cobertura/uso de suelo (ESA WorldCover remuestreado): unidad de CÁLCULO */
 export const CELDA_BASE_M = 30;
-export const MAX_LADO = 60;
+/**
+ * Unidad mínima de REPRESENTACIÓN: 1 m = un surco (papa 0.9-1.0 m entre surcos; INIA) y la
+ * celda del simulador 3D (1 m³, docs/design.md). Más chico no tiene sentido agronómico.
+ */
+export const CELDA_MIN_M = 1;
+/** Máximo de chunks por lado: el límite de la grilla del simulador 3D (GRID_LIMITS.max) */
+export const MAX_LADO = 100;
+/** Tamaños por debajo de 30 m: todos dividen a 30, así cada chunk cae dentro de una sola celda de datos */
+const PASOS_FINOS = [1, 2, 3, 5, 6, 10, 15, 30];
 const M_POR_GRADO = 111_320;
 
 export type FuenteChunk = '30m' | '1km' | 'servidor';
@@ -83,7 +97,7 @@ export function cuadrado(lat: number, lon: number, lado_m: number): Anillo {
   ];
 }
 
-/** Tamaño de chunk para que la grilla no pase de MAX_LADO por lado */
+/** Tamaño de chunk: el más chico de PASOS_FINOS (desde 1 m) que no pase de MAX_LADO chunks por lado */
 export function tamanoChunk(a: Anillo): number {
   const lats = a.map((p) => p[1]);
   const lons = a.map((p) => p[0]);
@@ -91,6 +105,9 @@ export function tamanoChunk(a: Anillo): number {
   const alto = (Math.max(...lats) - Math.min(...lats)) * M_POR_GRADO;
   const ancho = (Math.max(...lons) - Math.min(...lons)) * M_POR_GRADO * Math.cos((lat0 * Math.PI) / 180);
   const lado = Math.max(alto, ancho);
+  const ideal = lado / MAX_LADO;
+  if (ideal <= CELDA_BASE_M)
+    return PASOS_FINOS.find((p) => p >= Math.max(CELDA_MIN_M, ideal)) ?? CELDA_BASE_M;
   return CELDA_BASE_M * Math.max(1, Math.ceil(lado / (CELDA_BASE_M * MAX_LADO)));
 }
 
@@ -127,6 +144,28 @@ function indiceEnParcela(p: Parcela, lat: number, lon: number): number | null {
   const col = Math.floor(((lon - oeste) / (este - oeste)) * p.columnas);
   const fila = Math.floor(((norte - lat) / (norte - sur)) * p.filas);
   return fila * p.columnas + col;
+}
+
+/** Altura interpolada (bilineal) dentro de una parcela de 30 m: evita escalones en chunks chicos */
+function elevacionParcela(p: Parcela, lat: number, lon: number): number | null {
+  const [oeste, sur, este, norte] = p.bbox;
+  const fx = ((lon - oeste) / (este - oeste)) * p.columnas - 0.5;
+  const fy = ((norte - lat) / (norte - sur)) * p.filas - 0.5;
+  const x0 = Math.floor(fx);
+  const y0 = Math.floor(fy);
+  const tx = fx - x0;
+  const ty = fy - y0;
+  const v = (x: number, y: number) =>
+    valorCapa(
+      p.capas.elevacion_m,
+      Math.min(p.filas - 1, Math.max(0, y)) * p.columnas + Math.min(p.columnas - 1, Math.max(0, x)),
+    );
+  const a = v(x0, y0);
+  const b = v(x0 + 1, y0);
+  const c = v(x0, y0 + 1);
+  const d = v(x0 + 1, y0 + 1);
+  if (a == null || b == null || c == null || d == null) return a ?? b ?? c ?? d;
+  return a * (1 - tx) * (1 - ty) + b * tx * (1 - ty) + c * (1 - tx) * ty + d * tx * ty;
 }
 
 export interface FuentesLocales {
@@ -173,7 +212,7 @@ export function construirChunks(anillo: Anillo, f: FuentesLocales): GrillaChunks
           lat,
           lon,
           dentro,
-          elevacion_m: valorCapa(c.elevacion_m, i),
+          elevacion_m: elevacionParcela(p, lat, lon),
           pendiente_grados: valorCapa(c.pendiente_grados, i),
           worldcover: wc,
           regla: c.regla_uso.datos[i] ?? reglaDe(wc, f.reglas),
