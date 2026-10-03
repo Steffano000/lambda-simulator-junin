@@ -37,7 +37,7 @@ export interface Cosecha {
   dia: number;
   /** Salud (CHI) de la planta al cosechar */
   salud: number;
-  /** kg en la celda de 1 m² = rendimiento de referencia Junín 2025 × CHI */
+  /** kg en la celda = referencia (kg/m²; motor de Junín en la parcela real) × CHI × área de la celda */
   kg: number;
 }
 

@@ -40,6 +40,11 @@ export interface ReporteCosecha {
   /** Primer día con una acción sobre estas celdas en el ciclo */
   diaInicio: number;
   areaM2: number;
+  /** Número de celdas cosechadas (en la parcela real cada celda mide chunk² m²) */
+  nCeldas: number;
+  /** Rendimiento de referencia medio (t/ha) y su fuente; el real = referencia × salud */
+  referenciaTHa: number;
+  fuenteReferencia: string;
   /** Celdas cosechadas (para descanso o rotación) */
   tileIds: string[];
   acciones: FilaAccion[];
@@ -66,6 +71,8 @@ export interface EntradaReporte {
   tilesDespues: readonly TileNode[];
   candidatos: readonly Crop[];
   textura?: Textura;
+  /** Área de cada celda en m² (parcela real); por defecto 1 m² */
+  areaDe?: (tileId: string) => number;
 }
 
 const r2 = (v: number) => Math.round(v * 100) / 100;
@@ -73,6 +80,7 @@ const r2 = (v: number) => Math.round(v * 100) / 100;
 export class HarvestReport {
   static generar(e: EntradaReporte): ReporteCosecha {
     const celdas = new Set(e.cosechas.map((c) => c.tileId));
+    const area = e.areaDe ?? (() => 1);
     const registros = registrosDelCiclo(e.bitacora, celdas, e.plantacion.diaSiembra);
     const economia = economiaDe(e.crop.nombre);
 
@@ -83,8 +91,11 @@ export class HarvestReport {
     const riego = { eventos: 0, horas: 0, litros: 0 };
 
     for (const r of registros) {
-      const n = r.tileIds.filter((id) => celdas.has(id)).length;
+      const ids = r.tileIds.filter((id) => celdas.has(id));
+      const n = ids.length;
       if (n === 0) continue;
+      // insumos por m²: se multiplican por el área real de las celdas, no por su número
+      const m2 = ids.reduce((a, id) => a + area(id), 0);
       const fila = acciones.get(r.tool) ?? {
         tool: r.tool,
         veces: 0,
@@ -98,8 +109,8 @@ export class HarvestReport {
       fila.hasta = Math.max(fila.hasta, r.dia);
       acciones.set(r.tool, fila);
 
-      for (const c of CONSUMO_POR_ACCION[r.tool]) sumar(c.insumo, c.cantidad * n);
-      if (r.tool === 'sembrar') sumar('semilla', economia.semillaKgM2 * n);
+      for (const c of CONSUMO_POR_ACCION[r.tool]) sumar(c.insumo, c.cantidad * m2);
+      if (r.tool === 'sembrar') sumar('semilla', economia.semillaKgM2 * m2);
       const horas = HORAS_RIEGO[r.tool];
       if (horas) {
         riego.eventos++;
@@ -122,7 +133,13 @@ export class HarvestReport {
         };
       });
 
-    const areaM2 = celdas.size;
+    const areaM2 = r2([...celdas].reduce((a, id) => a + area(id), 0));
+    // referencia ponderada por área: kg reales / (salud × área)
+    const refKg = e.cosechas.reduce((a, c) => a + (c.salud > 0 ? c.kg / (c.salud / 100) : 0), 0);
+    const tilesRef = e.tilesDespues.length ? e.tilesDespues : [];
+    const fuenteReferencia = tilesRef.some((t) => t.rendJuninTHa?.[e.crop.nombre] != null)
+      ? 'motor de Junín (parcela real)'
+      : 'Junín 2025';
     const produccionKg = r2(e.cosechas.reduce((a, c) => a + c.kg, 0));
     const costoTotal = r2(insumos.reduce((a, f) => a + f.costo, 0));
     const ingreso = r2(produccionKg * economia.precioVenta);
@@ -138,6 +155,9 @@ export class HarvestReport {
       diaCosecha: e.diaCosecha,
       diaInicio: registros.length ? Math.min(...registros.map((r) => r.dia)) : e.plantacion.diaSiembra,
       areaM2,
+      nCeldas: celdas.size,
+      referenciaTHa: areaM2 ? r2((refKg / areaM2) * 10) : 0,
+      fuenteReferencia,
       tileIds: [...celdas],
       acciones: [...acciones.values()].sort((a, b) => a.desde - b.desde),
       insumos,

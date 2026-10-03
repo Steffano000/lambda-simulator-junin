@@ -96,6 +96,20 @@ export class Crop {
     return this.datos.rendimiento_junin_2025 * 0.1;
   }
 
+  /**
+   * Rendimiento de referencia (kg/m²) en una celda concreta: en una parcela real de Junín es el
+   * del motor de Junín para esa celda (mismo número que el panel del mapa); si no, Junín 2025.
+   */
+  rendimientoRefKgM2En(tile: Pick<TileNode, 'rendJuninTHa'>): number {
+    const tHa = tile.rendJuninTHa?.[this.nombre];
+    return tHa != null ? tHa * 0.1 : this.rendimientoRefKgM2;
+  }
+
+  /** De dónde sale la referencia de esa celda */
+  fuenteRendimiento(tile: Pick<TileNode, 'rendJuninTHa'>): string {
+    return tile.rendJuninTHa?.[this.nombre] != null ? 'motor de Junín (parcela real)' : 'Junín 2025';
+  }
+
   /** `textura_preferida`: "sin dato" o vacía = acepta cualquier textura. */
   texturaCompatible(textura: Textura): boolean {
     const pref = this.datos.textura_preferida.toLowerCase();

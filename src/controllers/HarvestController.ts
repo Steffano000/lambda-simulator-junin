@@ -3,6 +3,7 @@
  * recuperado, y qué hacer con el suelo después (descanso o rotación de cultivo).
  */
 import { HarvestReport, type ReporteCosecha } from '@/domain/economy';
+import { areaCelda } from '@/domain/grid';
 import { BaseController } from './BaseController';
 
 export class HarvestController extends BaseController {
@@ -30,6 +31,7 @@ export class HarvestController extends BaseController {
     this.registrar('cosechar', r.aplicadas, p.cultivo);
 
     const cosechadas = new Set(r.aplicadas);
+    const porId = this.tilesById(r.tiles);
     const reporte = HarvestReport.generar({
       id: `R${this.state.reportes.length + 1}`,
       plantacion: p,
@@ -40,6 +42,7 @@ export class HarvestController extends BaseController {
       tilesDespues: r.tiles.filter((t) => cosechadas.has(t.id)),
       candidatos: this.deps.crops.all(),
       textura: s.terreno?.textura,
+      areaDe: (id) => areaCelda(porId.get(id) ?? {}),
     });
 
     this.set({

@@ -151,3 +151,24 @@ describe('Validación de prerrequisitos y plantación', () => {
     expect(papa.requisitos.map((r) => r.id)).toContain('nitrogeno');
   });
 });
+
+describe('Cosecha en la parcela real (celdas de más de 1 m²)', () => {
+  it('kg = referencia del motor de Junín × salud × área real de la celda', () => {
+    const t = grid()[0];
+    const madura: TileNode = {
+      ...t,
+      vegetacionId: 'Papa',
+      estado: 'maduro',
+      salud: 90,
+      areaM2: 4, // chunk de 2 m
+      rendJuninTHa: { Papa: 20 },
+    };
+    const r = service.executeMany('cosechar', [madura.id], [madura], ctx());
+    // 20 t/ha = 2 kg/m² → 2 × 0.9 × 4 m² = 7.2 kg
+    expect(r.cosechas[0].kg).toBeCloseTo(7.2, 2);
+    // sin parcela real: 1 m² y la referencia Junín 2025 de data/cultivos.json
+    const normal: TileNode = { ...t, vegetacionId: 'Papa', estado: 'maduro', salud: 100 };
+    const r2 = service.executeMany('cosechar', [normal.id], [normal], ctx());
+    expect(r2.cosechas[0].kg).toBeCloseTo(papa.rendimientoRefKgM2, 2);
+  });
+});

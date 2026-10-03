@@ -61,8 +61,10 @@ export function HarvestReportModal() {
               Recolección completada · {rep.cultivo}
             </h2>
             <p className="text-2xs text-ui-ink-muted">
-              Plantación {rep.plantacionId} · {rep.areaM2} m² · del día {rep.diaInicio} al {rep.diaCosecha} (
-              {rep.diaCosecha - rep.diaInicio} días; {rep.diaCosecha - rep.diaSiembra} desde la siembra)
+              Plantación {rep.plantacionId} · {num(rep.areaM2)} m²
+              {rep.nCeldas !== rep.areaM2 && ` (${rep.nCeldas} celdas)`} · del día {rep.diaInicio} al{' '}
+              {rep.diaCosecha} ({rep.diaCosecha - rep.diaInicio} días; {rep.diaCosecha - rep.diaSiembra} desde
+              la siembra)
             </p>
           </div>
           <button className="btn ml-auto px-1.5" onClick={() => harvest.cerrar()} aria-label="Cerrar resumen">
@@ -158,6 +160,11 @@ export function HarvestReportModal() {
               {rep.produccionKg} kg × {soles(rep.precioVenta)}/kg ={' '}
               <span className="value font-semibold text-ui-ink">{soles(rep.ingreso)}</span> · rendimiento{' '}
               {rep.rendimientoTHa} t/ha · salud media {rep.saludMedia}.
+            </p>
+            <p className="mt-1 text-ui-ink-muted">
+              Rendimiento = referencia {rep.referenciaTHa} t/ha ({rep.fuenteReferencia}) × salud de cada celda
+              ({rep.saludMedia} % en promedio) sobre {num(rep.areaM2)} m² = {(rep.areaM2 / 10_000).toFixed(3)}{' '}
+              ha.
             </p>
             <p className="mt-1 text-ui-ink-muted">
               En {rep.diaCosecha - rep.diaInicio} días se gastaron{' '}

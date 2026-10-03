@@ -1,6 +1,6 @@
 /** Paso 02/04 · Acciones de plantación: sembrar, cosechar y remover. */
 import { EXTRACCION_N, RECUPERACION_DESCANSO, demandaN } from '../../crops';
-import type { TileNode } from '../../grid';
+import { areaCelda, type TileNode } from '../../grid';
 import { TileCommand, type ActionContext, type CategoriaAccion, type Cosecha } from '../TileCommand';
 
 abstract class AccionPlantacion extends TileCommand {
@@ -66,7 +66,8 @@ export class CosecharCommand extends AccionPlantacion {
   protected harvest(t: TileNode, ctx: ActionContext): Cosecha | undefined {
     const crop = ctx.cropOf(t.vegetacionId);
     if (!crop) return undefined;
-    const kg = crop.rendimientoRefKgM2 * (t.salud / 100);
+    // kg/m² de referencia × salud × área real de la celda (1 m², o chunk² en la parcela real)
+    const kg = crop.rendimientoRefKgM2En(t) * (t.salud / 100) * areaCelda(t);
     return {
       tileId: t.id,
       cultivo: crop.nombre,

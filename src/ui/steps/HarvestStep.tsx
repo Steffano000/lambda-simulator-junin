@@ -78,7 +78,7 @@ export function HarvestStep() {
                   </span>
                   <span className="mt-0.5 flex justify-between text-2xs text-ui-ink-muted">
                     <span>
-                      {rep.produccionKg} kg · {rep.areaM2} m²
+                      {rep.produccionKg} kg · {Math.round(rep.areaM2)} m²
                     </span>
                     <span className={`value ${rep.balance >= 0 ? 'text-chi-saludable' : 'text-ui-danger'}`}>
                       {rep.balance >= 0 ? '+' : ''}

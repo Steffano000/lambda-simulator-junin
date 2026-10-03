@@ -50,7 +50,16 @@ export function reaccionPorPh(ph: number | null): ReaccionPh {
   return 'neutro';
 }
 
-export function parcelaParaSimulador(g: GrillaChunks, terrenos: readonly Terreno[]): ParcelaParaSimulador {
+/**
+ * @param rendJunin rendimiento del motor de Junín por chunk (t/ha), por cultivo del 3D
+ *   (clave = nombre en data/cultivos.json; arreglo con el índice de g.chunks). Así la cosecha
+ *   del 3D usa el mismo número que el panel del mapa.
+ */
+export function parcelaParaSimulador(
+  g: GrillaChunks,
+  terrenos: readonly Terreno[],
+  rendJunin: Record<string, readonly (number | null)[]> = {},
+): ParcelaParaSimulador {
   const filas = Math.min(g.filas, GRID_LIMITS.max);
   const columnas = Math.min(g.columnas, GRID_LIMITS.max);
   const usados = g.chunks.filter((c) => c.fila < filas && c.columna < columnas);
@@ -70,6 +79,12 @@ export function parcelaParaSimulador(g: GrillaChunks, terrenos: readonly Terreno
   const eMin = elevs.length ? Math.min(...elevs) : 0;
   const phs = validos.map((c) => c.ph!);
   const phMedio = phs.length ? phs.reduce((a, b) => a + b, 0) / phs.length : null;
+
+  const rendDe = (i: number): Record<string, number> | null => {
+    const r: Record<string, number> = {};
+    for (const [cultivo, arr] of Object.entries(rendJunin)) if (arr[i] != null) r[cultivo] = arr[i]!;
+    return Object.keys(r).length ? r : null;
+  };
 
   const tiles: TileNode[] = usados.map((c) => {
     const elev = c.elevacion_m == null ? 0 : ((c.elevacion_m - eMin) / g.celda_m) * EXAGERACION_RELIEVE;
@@ -105,6 +120,9 @@ export function parcelaParaSimulador(g: GrillaChunks, terrenos: readonly Terreno
       bloqueado: bloqueo,
       oculto: !c.dentro,
       fidelidad: fidelidadChunk(c, g.celda_m),
+      // área real de la celda: chunk² × fracción dentro del polígono (no 1 m²)
+      areaM2: +(c.fraccion * g.celda_m ** 2).toFixed(3),
+      rendJuninTHa: util ? rendDe(c.fila * g.columnas + c.columna) : null,
     };
   });
 

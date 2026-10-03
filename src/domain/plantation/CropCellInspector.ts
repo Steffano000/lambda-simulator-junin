@@ -4,7 +4,7 @@
  * Vista de solo lectura sobre el dominio (no muta la celda).
  */
 import type { Crop, EtapaVisual } from '../crops';
-import type { TileNode } from '../grid';
+import { areaCelda, type TileNode } from '../grid';
 import { efectoEnCultivo, estadoHidrico, type EfectoHidrico, type EstadoHidrico } from '../hydrology';
 import { chiEstado, type ChiEstado, type HealthModel, type StressEffect } from '../stress';
 import type { ClimaHoy } from './PlantationService';
@@ -39,10 +39,14 @@ export interface DetalleCultivo {
   lluviaHoy: number;
   /** Lo que afecta hoy a la planta; vacío = sin estrés (se recupera) */
   efectos: StressEffect[];
-  /** Rendimiento de referencia Junín 2025 en la celda de 1 m² (kg) */
+  /** Rendimiento de referencia por m² (kg/m²): motor de Junín en la parcela real, si no Junín 2025 */
   rendimientoRefKg: number;
-  /** Referencia × salud actual (kg) */
+  /** Referencia × salud actual (kg/m²) */
   rendimientoEstimadoKg: number;
+  /** De dónde sale la referencia */
+  fuenteRendimiento: string;
+  /** Área de la celda (m²) */
+  areaM2: number;
   plantacionId: string | null;
 }
 
@@ -96,8 +100,10 @@ export class CropCellInspector {
       etcHoy: kcHoy * clima.et0,
       lluviaHoy: clima.lluviaMm,
       efectos,
-      rendimientoRefKg: crop.rendimientoRefKgM2,
-      rendimientoEstimadoKg: crop.rendimientoRefKgM2 * (tile.salud / 100),
+      rendimientoRefKg: crop.rendimientoRefKgM2En(tile),
+      rendimientoEstimadoKg: crop.rendimientoRefKgM2En(tile) * (tile.salud / 100),
+      fuenteRendimiento: crop.fuenteRendimiento(tile),
+      areaM2: areaCelda(tile),
       plantacionId: plantacion?.id ?? null,
     };
   }

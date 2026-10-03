@@ -24,6 +24,8 @@ import {
   parcelaParaSimulador,
   pisoEcologico,
   puntoMasCercano,
+  rendimiento,
+  rendimientoPorChunk,
   resumirParcela,
   resumirResolucion,
   tamanoChunk,
@@ -302,7 +304,21 @@ export class JuninController {
   abrirEn3D(): string | null {
     const { chunks, nucleo, ubicacion, escenario, campana, cultivo, resolucion } = get();
     if (!chunks || !nucleo || !ubicacion) return 'Primero dibuja una parcela.';
-    const p = parcelaParaSimulador(chunks, container.terrains.clases());
+    // Rendimiento del motor de Junín por chunk para cada cultivo que existe en el 3D:
+    // la cosecha del 3D = este número × salud de la celda × área real de la celda
+    const pp = nucleo.sim.puntos[ubicacion.punto];
+    const rendJunin: Record<string, (number | null)[]> = {};
+    for (const [id, nombre3D] of Object.entries(CULTIVO_SIMULADOR)) {
+      const r = rendimiento(ubicacion.punto, escenario, id, get().anterior, nucleo, campana);
+      if (!r) continue;
+      rendJunin[nombre3D] = rendimientoPorChunk(
+        chunks,
+        r.rend_t_ha,
+        nucleo.catalogo.cultivos[id]?.ecocrop,
+        pp?.suelo.ph ?? null,
+      ).porChunk;
+    }
+    const p = parcelaParaSimulador(chunks, container.terrains.clases(), rendJunin);
     const terreno = new TerrainProfile(p.dominante, p.reaccion, p.config, SoilMix.de(p.mezcla), 'manchas');
 
     // Clima: los 12 meses de la campaña del escenario elegido, como escenario de la app
@@ -343,6 +359,12 @@ export class JuninController {
         tipo: 'ok',
         texto: `Parcela real de Junín cargada: chunks de ${chunks.celda_m} m (relieve ×3). Solo se dibuja tu polígono; ${p.celdasBloqueadas} celdas bloqueadas o sin dato quedan como losas planas y no aceptan acciones.`,
         detalle: [
+          `Cada celda mide ${chunks.celda_m} × ${chunks.celda_m} m (${chunks.celda_m ** 2} m²; las del borde, solo la parte dentro del polígono). La cosecha = rendimiento del motor de Junín de esa celda (el mismo del panel) × su salud × su área; insumos y agua también van por m² reales.`,
+          ...(cultivo && !CULTIVO_SIMULADOR[cultivo]
+            ? [
+                `${nucleo.catalogo.cultivos[cultivo]?.nombre ?? cultivo} no se simula en 3D: aquí puedes sembrar ${Object.values(CULTIVO_SIMULADOR).join(', ').toLowerCase()}, cada uno con su rendimiento del motor de Junín para esta parcela.`,
+              ]
+            : []),
           `Supuestos del simulador (no son datos medidos): P ${SUPUESTOS_SIMULADOR.p}, K ${SUPUESTOS_SIMULADOR.k} y humedad inicial ${SUPUESTOS_SIMULADOR.humedad} %.`,
           ...(resolucion
             ? [

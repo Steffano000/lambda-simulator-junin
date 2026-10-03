@@ -117,3 +117,27 @@ describe('Nutrientes · extracción y barbecho', () => {
     expect(t.descansoHasta).toBeNull();
   });
 });
+
+describe('HarvestReport · parcela real con celdas de 2 m', () => {
+  it('el área, los insumos y el rendimiento usan los m² reales, no el número de celdas', () => {
+    const base = reporte();
+    const r = HarvestReport.generar({
+      id: 'R2',
+      plantacion: { id: 'P1', diaSiembra: 10 },
+      crop: papa,
+      cosechas: cosechas.map((c) => ({ ...c, kg: c.kg * 4 })),
+      diaCosecha: 130,
+      bitacora,
+      tilesDespues: tiles(20),
+      candidatos: crops.all(),
+      areaDe: () => 4,
+    });
+    expect(r.nCeldas).toBe(2);
+    expect(r.areaM2).toBe(8);
+    expect(r.produccionKg).toBeCloseTo(base.produccionKg * 4, 2);
+    expect(r.rendimientoTHa).toBe(base.rendimientoTHa); // t/ha no cambia
+    expect(r.costoTotal).toBeCloseTo(base.costoTotal * 4, 1);
+    // referencia = kg / salud / área: 1.74 / 0.8 kg/m² = 21.75 t/ha
+    expect(r.referenciaTHa).toBeCloseTo(21.75, 1);
+  });
+});

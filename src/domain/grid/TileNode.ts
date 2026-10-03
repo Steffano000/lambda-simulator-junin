@@ -62,7 +62,20 @@ export interface TileNode {
    * hereda el valor de un píxel más grande. Sin parcela real queda indefinido.
    */
   fidelidad?: 'real' | 'remuestreado' | 'extrapolado' | null;
+  /**
+   * Parcela real: área de la celda en m² (chunk² × fracción dentro del polígono). Sin parcela
+   * real la celda mide 1 m² (design.md §1). Insumos, agua y cosecha se multiplican por ella.
+   */
+  areaM2?: number;
+  /**
+   * Parcela real: rendimiento del motor de Junín (t/ha) para cada cultivo del 3D en esta celda
+   * (escenario, campaña y cultivo anterior elegidos; × uso de suelo y pH del chunk).
+   */
+  rendJuninTHa?: Record<string, number> | null;
 }
+
+/** Área de la celda en m² (1 m² salvo en la parcela real) */
+export const areaCelda = (t: Pick<TileNode, 'areaM2'>): number => t.areaM2 ?? 1;
 
 export const tileId = (x: number, z: number): string => `${x}:${z}`;
 

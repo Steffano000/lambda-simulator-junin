@@ -25,7 +25,7 @@ import {
   type EfectoHidrico,
   type EstadoHidrico,
 } from '@/domain/hydrology';
-import type { TileNode } from '@/domain/grid';
+import { areaCelda, type TileNode } from '@/domain/grid';
 import type { DetalleCultivo } from '@/domain/plantation';
 import { useSimStore } from '@/store/useSimStore';
 import { controllers } from './index';
@@ -176,7 +176,7 @@ export interface ResumenHidrico {
   /** Celdas de suelo por estado de hidratación */
   estados: Record<EstadoHidrico, number>;
   total: number;
-  /** Agua libre total en surcos y charcos (L, 1 mm = 1 L/m²) */
+  /** Agua libre total en surcos y charcos (L, 1 mm = 1 L/m² × área de cada celda) */
   aguaSuperficieL: number;
   celdasConSurcos: number;
   /** Celdas con cultivo vivo según el efecto del agua */
@@ -201,7 +201,7 @@ export function useResumenHidrico(): ResumenHidrico {
       const estado = estadoHidrico(t.humedad, t.aguaSuperficie, props.saturacionPct);
       estados[estado]++;
       total++;
-      aguaSuperficieL += t.aguaSuperficie;
+      aguaSuperficieL += t.aguaSuperficie * areaCelda(t);
       if (tieneSurcos(t)) celdasConSurcos++;
       const crop = t.salud > 0 ? container.crops.find(t.vegetacionId) : undefined;
       if (crop) plantas[efectoEnCultivo(estado, t.humedad, crop.umbralHumedad)]++;

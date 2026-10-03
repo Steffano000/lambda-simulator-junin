@@ -553,3 +553,31 @@ describe('Fase 2: fidelidad por tamaño de chunk', () => {
     expect(visibles.every((t) => t.fidelidad === 'remuestreado')).toBe(true); // suelo 250 m > 30 m
   });
 });
+
+describe('El 3D cosecha lo mismo que el panel del mapa', () => {
+  it('parcela de ~1.1 ha con chunks de 2 m: kg del 3D (salud 100) = t/ha del panel × ha útiles', async () => {
+    const { construirChunks, cuadrado, resumirParcela, rendimientoPorChunk } = await import('./parcela');
+    const { parcelaParaSimulador } = await import('./puente');
+    const { container } = await import('@/app/container');
+    const grilla = (await fuente.grillaJunin()) as GrillaCapas;
+    const parcelas = await Promise.all(n.puntos.map((p) => fuente.parcela(p.id)));
+    const g = construirChunks(cuadrado(-12.0383, -75.3228, 106), { grilla, parcelas, reglas: n.reglas });
+    expect(g.celda_m).toBe(2);
+    const r = rendimiento('huayao_igp', 'normal', 'maiz_amilaceo', null, n)!;
+    const rc = rendimientoPorChunk(
+      g,
+      r.rend_t_ha,
+      n.catalogo.cultivos.maiz_amilaceo.ecocrop,
+      n.sim.puntos.huayao_igp.suelo.ph,
+    );
+    const p = parcelaParaSimulador(g, container.terrains.clases(), { 'Maíz amiláceo': rc.porChunk });
+    const maiz = container.crops.find('Maíz amiláceo')!;
+    const utiles = p.tiles.filter((t) => !t.bloqueado && !t.oculto);
+    const kg = utiles.reduce((a, t) => a + maiz.rendimientoRefKgM2En(t) * (t.areaM2 ?? 1), 0);
+    const m2 = utiles.reduce((a, t) => a + (t.areaM2 ?? 1), 0);
+    const ha = resumirParcela(g, n.reglas).area_efectiva_ha;
+    expect(m2 / 10_000).toBeCloseTo(ha, 2); // el 3D cubre las mismas ha útiles
+    expect(kg / 1000).toBeCloseTo(rc.produccion_t, 1); // y produce las mismas toneladas
+    expect(kg / 1000).toBeGreaterThan(r.rend_t_ha * ha * 0.9); // no 4 veces menos
+  });
+});

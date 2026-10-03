@@ -157,7 +157,18 @@ export function CropPanel({ tile }: { tile: TileNode }) {
 
       <Grupo titulo="Rendimiento">
         <Fila label="Estimado con la salud actual" value={d.rendimientoEstimadoKg.toFixed(2)} unit="kg/m²" />
-        <Fila label="Referencia Junín 2025" value={d.rendimientoRefKg.toFixed(2)} unit="kg/m²" />
+        <Fila
+          label={`Referencia (${d.fuenteRendimiento})`}
+          value={d.rendimientoRefKg.toFixed(2)}
+          unit="kg/m²"
+        />
+        {d.areaM2 !== 1 && (
+          <Fila
+            label={`En esta celda (${d.areaM2.toFixed(1)} m²)`}
+            value={(d.rendimientoEstimadoKg * d.areaM2).toFixed(2)}
+            unit="kg"
+          />
+        )}
       </Grupo>
     </PanelSeleccion>
   );
