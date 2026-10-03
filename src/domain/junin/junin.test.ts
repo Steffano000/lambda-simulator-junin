@@ -223,3 +223,40 @@ describe('piloto: parcela dibujada → chunks → rendimiento → 3D', () => {
     expect(p.celdasBloqueadas).toBeLessThan(p.tiles.length / 2);
   });
 });
+
+describe('selección en la parcela real', () => {
+  it('nunca incluye celdas bloqueadas', async () => {
+    const { SelectionController } = await import('@/controllers/SelectionController');
+    const { useSimStore } = await import('@/store/useSimStore');
+    const { container } = await import('@/app/container');
+    const { construirChunks } = await import('./parcela');
+    const { parcelaParaSimulador } = await import('./puente');
+    const grilla = (await fuente.grillaJunin()) as GrillaCapas;
+    const parcelas = await Promise.all(n.puntos.map((p) => fuente.parcela(p.id)));
+    const rombo: [number, number][] = [
+      [-75.3228, -12.0378],
+      [-75.3223, -12.0383],
+      [-75.3228, -12.0388],
+      [-75.3233, -12.0383],
+    ];
+    const g = construirChunks(rombo, { grilla, parcelas, reglas: n.reglas });
+    const p = parcelaParaSimulador(g, container.terrains.clases(), {});
+    useSimStore.setState({ tiles: p.tiles, config: p.config, seleccion: [] });
+    const sel = new SelectionController(useSimStore, container);
+    const esquina = p.tiles.find((t) => t.coords.x === 0 && t.coords.z === 0)!;
+    const opuesta = p.tiles.find(
+      (t) => t.coords.x === p.config.cols - 1 && t.coords.z === p.config.rows - 1,
+    )!;
+    expect(esquina.bloqueado).toBeTruthy();
+    sel.begin(esquina.id);
+    sel.extend(opuesta.id);
+    sel.end();
+    const ids = new Set(useSimStore.getState().seleccion);
+    const libres = p.tiles.filter((t) => !t.bloqueado);
+    expect(ids.size).toBe(libres.length);
+    expect(p.tiles.filter((t) => ids.has(t.id)).every((t) => !t.bloqueado)).toBe(true);
+    sel.clear();
+    sel.selectAll();
+    expect(useSimStore.getState().seleccion).toHaveLength(libres.length);
+  });
+});

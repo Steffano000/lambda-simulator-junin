@@ -24,6 +24,8 @@ export function TreatmentStep() {
   const seleccion = useSimStore((s) => s.seleccion);
   const correccion = useSimStore((s) => s.correccion);
   const hayTratadas = useSimStore((s) => s.tiles.some((t) => t.estado === 'arado'));
+  const trabajables = useSimStore((s) => s.tiles.filter((t) => !t.bloqueado).length);
+  const hayBloqueadas = useSimStore((s) => s.tiles.some((t) => t.bloqueado));
   const disponibles = useDisponibles();
   const necesidades = useNecesidades();
   const aptos = planting.aptos();
@@ -69,7 +71,18 @@ export function TreatmentStep() {
       <Section titulo="Aplicar">
         <p className="mb-2 text-2xs text-ui-ink-muted">
           Clic en una celda o arrastra para seleccionar un área. Clic derecho para girar la cámara.
+          {hayBloqueadas &&
+            ' Las celdas grises (fuera de tu parcela o en ciudad, agua o nieve) nunca se seleccionan.'}
         </p>
+        <button
+          className="btn mb-2 w-full justify-center"
+          disabled={seleccion.length === trabajables}
+          onClick={() => selection.selectAll()}
+        >
+          {hayBloqueadas
+            ? `Seleccionar toda la parcela (${trabajables} celdas)`
+            : `Seleccionar todo (${trabajables})`}
+        </button>
         <div className="mb-2 flex items-baseline justify-between text-xs">
           <span>
             <span className="value font-semibold">{seleccion.length}</span> celda(s) seleccionada(s)

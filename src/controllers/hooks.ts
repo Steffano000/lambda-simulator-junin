@@ -195,7 +195,7 @@ export function useResumenHidrico(): ResumenHidrico {
     let celdasConSurcos = 0;
     let saturacionPct: number | null = null;
     for (const t of tiles) {
-      const props = t.canal ? undefined : container.hidraulica(t.suelo.clase);
+      const props = t.canal || t.bloqueado ? undefined : container.hidraulica(t.suelo.clase);
       if (!props) continue;
       saturacionPct = props.saturacionPct;
       const estado = estadoHidrico(t.humedad, t.aguaSuperficie, props.saturacionPct);
