@@ -31,6 +31,7 @@ export function estadoHidricoCelda(tile: TileNode): EstadoHidrico | null {
 }
 
 export function tileColor(tile: TileNode, overlay: Overlay): string {
+  if (tile.bloqueado) return tile.bloqueado.color;
   if (tile.canal) return surface.agua;
   switch (overlay) {
     case 'humedad':

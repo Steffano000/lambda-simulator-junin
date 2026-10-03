@@ -158,6 +158,8 @@ Esta copia integra los datos y códigos de `C:\TESIS 2\DATOS PARA LA VERSION MEJ
 
 Detalle en [docs/11-datos-junin.md](docs/11-datos-junin.md).
 
+**Piloto:** la app abre en **Mapa Junín**: imagen NASA en vivo, dibujo de la parcela, uso de suelo, grilla de chunks, escenarios con semáforo P/ET₀, cultivos, rendimiento por motor, rotación de 2 campañas y paso al **3D** con la parcela real. Ver [docs/12-piloto-junin.md](docs/12-piloto-junin.md). El servidor opcional de la Fase 2 está en `server/`.
+
 ## Sistema visual (Tailwind + Three.js)
 
 `src/theme/tokens.ts` es la **única fuente de color** (ver `docs/design.md`). La leen tanto Tailwind, para la interfaz, como Three.js, para la grilla, así que la leyenda y el bloque 3D siempre coinciden.

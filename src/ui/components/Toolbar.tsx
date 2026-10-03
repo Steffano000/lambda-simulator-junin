@@ -1,6 +1,7 @@
 /** Barra superior: flujo de trabajo y overlay activo de la grilla. */
 import { useControllers } from '@/controllers/hooks';
 import { useSimStore, type Overlay } from '@/store/useSimStore';
+import { ModoSwitch } from '../junin/ModoSwitch';
 import { FlowStepper } from './FlowStepper';
 import { IconDrop } from './icons';
 
@@ -21,6 +22,8 @@ export function Toolbar() {
       <h1 className="text-sm font-semibold tracking-tight">
         Lambda <span className="text-ui-ink-muted">Simulator</span>
       </h1>
+
+      <ModoSwitch />
 
       <FlowStepper />
 

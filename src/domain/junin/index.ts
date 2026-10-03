@@ -1,3 +1,5 @@
 export * from './simulador';
 export * from './grilla';
 export * from './adaptadores';
+export * from './parcela';
+export * from './puente';

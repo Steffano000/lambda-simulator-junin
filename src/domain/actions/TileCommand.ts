@@ -82,6 +82,7 @@ export abstract class TileCommand {
 
   /** Solo la etapa de validación, para deshabilitar/explicar en la UI. */
   check(tile: TileNode, ctx: ActionContext): string | null {
+    if (tile.bloqueado) return tile.bloqueado.motivo;
     return this.validate(tile, ctx);
   }
 
@@ -91,7 +92,7 @@ export abstract class TileCommand {
     if (index < 0) return `Celda ${tileId} no existe.`;
     const target = grid[index];
 
-    const motivo = this.validate(target, ctx);
+    const motivo = target.bloqueado ? target.bloqueado.motivo : this.validate(target, ctx);
     if (motivo) return motivo;
 
     const updated = this.apply(target, ctx);

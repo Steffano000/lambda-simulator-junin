@@ -144,3 +144,62 @@ describe('adaptador al clima de la app', () => {
     expect(esc.mes(1).lluvia).toBeGreaterThan(0);
   });
 });
+
+describe('piloto: parcela dibujada → chunks → rendimiento → 3D', () => {
+  it('parcela de 9 ha en Huayao: datos a 30 m, apta y con rendimiento por chunk', async () => {
+    const { construirChunks, cuadrado, areaHa, resumirParcela, rendimientoPorChunk } =
+      await import('./parcela');
+    const grilla = (await fuente.grillaJunin()) as GrillaCapas;
+    const parcelas = await Promise.all(n.puntos.map((p) => fuente.parcela(p.id)));
+    const anillo = cuadrado(-12.0383, -75.3228, 300);
+    expect(areaHa(anillo)).toBeCloseTo(9, 0);
+    const g = construirChunks(anillo, { grilla, parcelas, reglas: n.reglas });
+    expect(g.celda_m).toBe(30);
+    const res = resumirParcela(g, n.reglas);
+    expect(res.puede_sembrar).toBe(true);
+    expect(res.pct_30m).toBe(100);
+    const r = rendimiento('huayao_igp', 'normal', 'papa', null, n)!;
+    const rc = rendimientoPorChunk(
+      g,
+      r.rend_t_ha,
+      n.catalogo.cultivos.papa.ecocrop,
+      9,
+      n.sim.puntos.huayao_igp.suelo.ph,
+    );
+    expect(rc.rend_parcela_t_ha).toBeGreaterThan(r.rend_t_ha * 0.9);
+    expect(rc.rend_parcela_t_ha).toBeLessThanOrEqual(r.rend_t_ha);
+  });
+
+  it('parcela urbana en Huancayo se bloquea; fuera de Junín se detecta', async () => {
+    const { construirChunks, cuadrado, resumirParcela, enGeojson } = await import('./parcela');
+    const grilla = (await fuente.grillaJunin()) as GrillaCapas;
+    const parcelas = await Promise.all(n.puntos.map((p) => fuente.parcela(p.id)));
+    const g = construirChunks(cuadrado(-12.0651, -75.2049, 300), { grilla, parcelas, reglas: n.reglas });
+    expect(resumirParcela(g, n.reglas).puede_sembrar).toBe(false);
+    const region = await fuente.limiteRegion();
+    expect(enGeojson(-12.0383, -75.3228, region)).not.toBeNull();
+    expect(enGeojson(-12.05, -77.05, region)).toBeNull(); // Lima
+  });
+
+  it('una parcela fuera de las ventanas de 30 m usa la grilla de 1 km', async () => {
+    const { construirChunks, cuadrado, resumirParcela } = await import('./parcela');
+    const grilla = (await fuente.grillaJunin()) as GrillaCapas;
+    const g = construirChunks(cuadrado(-11.6, -75.4, 200), { grilla, parcelas: [], reglas: n.reglas });
+    expect(g.chunks.every((c) => c.fuente === '1km')).toBe(true);
+    expect(resumirParcela(g, n.reglas).elevacion_media_m).toBeGreaterThan(3000);
+  });
+
+  it('el puente al simulador 3D marca celdas bloqueadas y respeta los suelos', async () => {
+    const { construirChunks, cuadrado } = await import('./parcela');
+    const { parcelaParaSimulador } = await import('./puente');
+    const terrenos = JSON.parse(readFileSync(resolve(BASE, '../../../data/terrenos.json'), 'utf-8')).terrenos;
+    const grilla = (await fuente.grillaJunin()) as GrillaCapas;
+    const parcelas = await Promise.all(n.puntos.map((p) => fuente.parcela(p.id)));
+    const g = construirChunks(cuadrado(-12.0383, -75.3228, 300), { grilla, parcelas, reglas: n.reglas });
+    const p = parcelaParaSimulador(g, terrenos, {});
+    expect(p.tiles).toHaveLength(p.config.rows * p.config.cols);
+    expect(p.dominante.clase).toBe('Franco arcilloso');
+    expect(p.tiles.filter((t) => !t.bloqueado).every((t) => t.suelo.clase === 'Franco arcilloso')).toBe(true);
+    expect(p.celdasBloqueadas).toBeLessThan(p.tiles.length / 2);
+  });
+});

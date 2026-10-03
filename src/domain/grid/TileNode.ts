@@ -50,6 +50,11 @@ export interface TileNode {
   salud: number;
   /** Día simulado hasta el que el suelo descansa (barbecho); null si no descansa */
   descansoHasta: number | null;
+  /**
+   * Celda donde no se puede trabajar (parcela real de Junín): fuera del polígono dibujado
+   * o con cobertura bloqueada (ciudad, agua, nieve). Ninguna acción ni siembra la acepta.
+   */
+  bloqueado?: { motivo: string; color: string } | null;
 }
 
 export const tileId = (x: number, z: number): string => `${x}:${z}`;

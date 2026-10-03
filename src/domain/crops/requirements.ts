@@ -49,6 +49,7 @@ export class RequirementFactory {
         etiqueta: 'Suelo preparado',
         condicion: 'Celda arada y libre',
         check: (t) => {
+          if (t.bloqueado) return t.bloqueado.motivo;
           if (t.canal) return 'La celda es un canal de riego.';
           if (t.vegetacionId) return 'La celda ya tiene un cultivo.';
           return t.estado === 'arado' ? null : 'Falta arar la celda.';
