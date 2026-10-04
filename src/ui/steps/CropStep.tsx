@@ -9,6 +9,8 @@ import { useSimStore } from '@/store/useSimStore';
 import { IconBack } from '../components/icons';
 import { CropIcon } from '../icons/CropIcon';
 import { Section } from '../panels/Section';
+import { PanelCultivoJunin } from '../junin/PanelCultivoJunin';
+import { useEsParcelaReal } from '../junin/useJunin';
 import { CropGrowthPreview } from './CropGrowthPreview';
 import { ValidationReport } from './ValidationReport';
 
@@ -30,6 +32,21 @@ export function CropStep() {
     [tiles, seleccion, escenario, mes],
   );
   const candidatas = planting.candidatas().length;
+  const parcelaReal = useEsParcelaReal();
+  // En la parcela real el rendimiento de cada cultivo es el del motor de Junín (no el de data/cultivos.json)
+  const rendReal = useMemo(() => {
+    const m = new Map<string, number>();
+    if (!parcelaReal) return m;
+    for (const c of aptos) {
+      const vals = tiles
+        .filter((t) => !t.bloqueado && !t.oculto && t.rendJuninTHa)
+        .map((t) => [t.rendJuninTHa![c.nombre] ?? 0, t.areaM2 ?? 1] as const);
+      const area = vals.reduce((a, [, w]) => a + w, 0);
+      if (area) m.set(c.nombre, vals.reduce((a, [v, w]) => a + v * w, 0) / area);
+    }
+    return m;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tiles, parcelaReal]);
 
   return (
     <>
@@ -74,7 +91,10 @@ export function CropStep() {
                     )}
                   </div>
                   <div className="mt-0.5 text-2xs text-ui-ink-muted">
-                    {crop.datos.variedad} · {crop.cicloDias} días · {crop.datos.rendimiento_junin_2025} t/ha
+                    {crop.datos.variedad} · {crop.cicloDias} días ·{' '}
+                    {rendReal.has(crop.nombre)
+                      ? `${rendReal.get(crop.nombre)!.toFixed(2)} t/ha (motor de Junín)`
+                      : `${crop.datos.rendimiento_junin_2025} t/ha`}
                   </div>
                 </button>
               </li>
@@ -95,6 +115,7 @@ export function CropStep() {
         )}
       </Section>
 
+      {parcelaReal && <PanelCultivoJunin />}
       {cultivo && <CropGrowthPreview cultivo={cultivo} />}
       {cultivo && validacion && <ValidationReport validacion={validacion} />}
 

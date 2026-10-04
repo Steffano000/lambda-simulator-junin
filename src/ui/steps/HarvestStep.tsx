@@ -9,6 +9,8 @@ import { IconCheck } from '../components/icons';
 import { IconCosechar } from '../icons';
 import { CropIcon } from '../icons/CropIcon';
 import { Section } from '../panels/Section';
+import { RotacionJunin } from '../junin/PanelCultivoJunin';
+import { useEsParcelaReal } from '../junin/useJunin';
 
 const soles = (v: number) => `S/ ${v.toFixed(2)}`;
 
@@ -19,6 +21,7 @@ export function HarvestStep() {
   const dia = useSimStore((s) => s.dia);
   const reportes = useSimStore((s) => s.reportes);
   const porId = new Map(tiles.map((t) => [t.id, t]));
+  const parcelaReal = useEsParcelaReal();
 
   const enCampo = plantaciones
     .map((p) => {
@@ -91,6 +94,7 @@ export function HarvestStep() {
           </ul>
         )}
       </Section>
+      {parcelaReal && <RotacionJunin />}
     </>
   );
 }

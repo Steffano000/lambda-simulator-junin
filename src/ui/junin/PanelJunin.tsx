@@ -10,16 +10,12 @@ import type { ResumenResolucion } from '@/domain/junin';
 import { API_URL } from '@/data/junin/servidor';
 import {
   climaEscenario,
-  CULTIVO_SIMULADOR,
   ESCENARIOS,
   ETIQUETA_SIMULACION,
   CAPAS,
   CAPAS_POR_CHUNK,
-  menuCultivos,
-  MOTOR_ETIQUETA,
   opcionesTamano,
   type CapaDato,
-  type Severidad,
   PENALIZACION_ADVERTENCIA,
   UMBRAL_COBERTURA_PCT,
 } from '@/domain/junin';
@@ -36,7 +32,7 @@ import {
   OVERLAYS_NASA,
 } from './colores';
 import { GraficoEscenario } from './GraficoEscenario';
-import { useResultadoJunin, type ResultadoJunin } from './useJunin';
+import { useResultadoJunin } from './useJunin';
 
 function Paso({
   n,
@@ -108,7 +104,7 @@ function ResolucionEfectiva({ r }: { r: ResumenResolucion }) {
                   <span className="inline-flex items-center gap-1">
                     <span className="swatch" style={{ background: COLOR_FIDELIDAD[f.dominante] }} />
                     {f.dominante}
-                    {f.factor_max > 1 && f.dominante !== 'real' && ` ×${f.factor_max}`}
+                    {f.factor_max > 1 && f.dominante !== 'real' && f.capa !== 'clima' && ` ×${f.factor_max}`}
                   </span>
                 </td>
               </tr>
@@ -124,84 +120,6 @@ function ResolucionEfectiva({ r }: { r: ResumenResolucion }) {
           {a}
         </p>
       ))}
-    </div>
-  );
-}
-
-const ICONO_SEV: Record<Severidad, string> = { bloqueo: '⛔', advertencia: '⚠', info: '▫' };
-const COLOR_SEV: Record<Severidad, string> = {
-  bloqueo: 'text-ui-danger',
-  advertencia: 'text-amber-700',
-  info: 'text-ui-ink-muted',
-};
-const ESTADO_SIEMBRA = {
-  apta: ['bg-green-100 text-green-900', 'Apta para sembrar'],
-  con_advertencias: ['bg-amber-100 text-amber-900', 'Apta, con advertencias'],
-  no_apta: ['bg-red-100 text-red-900', 'No apta'],
-} as const;
-
-/** Paso 8b (Fase 3): todas las condiciones de siembra del cultivo elegido, con el dato usado */
-function CondicionesPlantacion({ res }: { res: ResultadoJunin }) {
-  const ev = res.ev!;
-  const [clase, titulo] = ESTADO_SIEMBRA[ev.estado];
-  const m = ev.marco;
-  return (
-    <div>
-      <div className={`mb-2 rounded px-2 py-1 font-semibold ${clase}`}>
-        {titulo}: {res.nombre}
-        <span className="ml-1 font-normal">
-          · confianza {ev.confianza.nivel} ({ev.confianza.distancia_km} km al punto con datos)
-        </span>
-      </div>
-      <ul className="space-y-1">
-        {ev.razones.map((r) => (
-          <li key={r.codigo} className={`text-2xs ${COLOR_SEV[r.severidad]}`} title={r.fuente ?? ''}>
-            {ICONO_SEV[r.severidad]} {r.mensaje_es}
-            <span className="block pl-4 text-ui-ink-muted">Dato: {r.dato_usado}</span>
-          </li>
-        ))}
-      </ul>
-      {ev.correccion.aplicada && ev.meses.length > 0 && (
-        <table className="mt-2 w-full text-2xs">
-          <thead className="text-ui-ink-muted">
-            <tr>
-              <th className="text-left font-normal">Mes</th>
-              <th className="text-right font-normal">Tmín punto</th>
-              <th className="text-right font-normal">Tmín parcela</th>
-              <th className="text-right font-normal">Tmed parcela</th>
-            </tr>
-          </thead>
-          <tbody>
-            {ev.meses.map((x) => (
-              <tr key={x.mes}>
-                <td>{x.mes}</td>
-                <td className="value text-right">{x.tmin_punto.toFixed(1)}</td>
-                <td className="value text-right">{x.tmin_parcela.toFixed(1)}</td>
-                <td className="value text-right">{x.tmed_parcela.toFixed(1)}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      )}
-      {m && (
-        <div className="mt-2 rounded border border-ui-border p-2 text-2xs">
-          <div className="font-semibold">Marco de plantación · {m.variedad}</div>
-          {m.plantas_m2 != null ? (
-            <p>
-              {m.entre_surcos_m != null && `Surcos a ${m.entre_surcos_m} m`}
-              {m.entre_plantas_m != null && `, golpes a ${m.entre_plantas_m} m`} →{' '}
-              <b>{m.plantas_m2} plantas/m²</b> ({Math.round(m.plantas_m2 * 10_000).toLocaleString('es-PE')}
-              /ha)
-              {res.kg_planta != null && ` · ${res.kg_planta} kg por planta`}.
-            </p>
-          ) : (
-            <p>
-              Siembra {m.metodo}: {m.semilla_kg_ha ?? '—'} kg de semilla/ha; no se cuentan plantas.
-            </p>
-          )}
-          <p className="mt-1 text-ui-ink-muted">Fuente: {m.fuente}</p>
-        </div>
-      )}
     </div>
   );
 }
@@ -247,13 +165,11 @@ export function PanelJunin() {
   );
   const res = useResultadoJunin();
   const [ejemplo, setEjemplo] = useState('huayao_igp');
-  const [otros, setOtros] = useState(false);
 
   const n = s.nucleo;
   const u = s.ubicacion;
   const listo = !!(u && !u.fuera_de_junin && s.resumen?.puede_sembrar);
 
-  const menu = useMemo(() => (n && u ? menuCultivos(u.punto, n, true) : []), [n, u]);
   const clima = useMemo(
     () => (n && u ? climaEscenario(u.punto, s.escenario, n.sim) : []),
     [n, u, s.escenario],
@@ -264,7 +180,6 @@ export function PanelJunin() {
       ? n.sim.puntos[u.punto].escenarios[s.escenario].cultivos[s.cultivo]?.[s.campana]
       : undefined;
   const mesesCampana = useMemo(() => new Set(camp ? Object.keys(camp.mensual) : []), [camp]);
-  const feno = n?.fenologia.cultivos.find((c) => c.id === s.cultivo);
 
   const elevs =
     s.chunks?.chunks.filter((c) => c.dentro && c.elevacion_m != null).map((c) => c.elevacion_m!) ?? [];
@@ -662,7 +577,7 @@ export function PanelJunin() {
         )}
       </Paso>
 
-      <Paso n={8} titulo="Cultivo" apagado={!listo}>
+      <Paso n="8-12" titulo="Cultivo, rendimiento y rotación → en el 3D" apagado={!listo}>
         {s.resumen && u && !u.fuera_de_junin && !s.resumen.puede_sembrar && (
           <p className="text-ui-danger">
             La simulación no corre en esta parcela (ver el paso 4). Dibuja otra o ajusta el polígono.
@@ -670,280 +585,23 @@ export function PanelJunin() {
         )}
         {listo && (
           <>
-            <select
-              className="field mb-1"
-              value={s.cultivo ?? ''}
-              onChange={(e) => jc.setCultivo(e.target.value || null)}
-            >
-              <option value="">— Elige un cultivo —</option>
-              <optgroup
-                label={`De ${n.catalogo.provincias[u!.provincia]?.nombre ?? 'la provincia'} (DRA 2022)`}
-              >
-                {menu
-                  .filter((c) => c.de_la_provincia)
-                  .map((c) => (
-                    <option key={c.id} value={c.id}>
-                      {c.nombre} · {c.porcentaje}% del área
-                    </option>
-                  ))}
-              </optgroup>
-              {otros && (
-                <optgroup label="Otros (aptitud baja)">
-                  {menu
-                    .filter((c) => !c.de_la_provincia)
-                    .map((c) => (
-                      <option key={c.id} value={c.id}>
-                        {c.nombre}
-                      </option>
-                    ))}
-                </optgroup>
-              )}
-            </select>
-            <label className="mb-2 flex items-center gap-1.5 text-2xs">
-              <input type="checkbox" checked={otros} onChange={() => setOtros(!otros)} /> Mostrar cultivos de
-              otras provincias
-            </label>
-            <div className="grid grid-cols-2 gap-2">
-              <label>
-                <span className="text-2xs text-ui-ink-muted">Cultivo anterior</span>
-                <select
-                  className="field"
-                  value={s.anterior ?? ''}
-                  onChange={(e) => jc.setAnterior(e.target.value || null)}
-                >
-                  <option value="">Ninguno</option>
-                  <option value="descanso">Descanso</option>
-                  {menu.map((c) => (
-                    <option key={c.id} value={c.id}>
-                      {c.nombre}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <label>
-                <span className="text-2xs text-ui-ink-muted">Campaña</span>
-                <select
-                  className="field"
-                  value={s.campana}
-                  onChange={(e) => jc.setCampana(Number(e.target.value))}
-                >
-                  <option value={0}>2026-27</option>
-                  <option value={1}>2027-28</option>
-                </select>
-              </label>
-            </div>
-          </>
-        )}
-      </Paso>
-
-      {res?.ev && (
-        <Paso n="8b" titulo="Condiciones de plantación">
-          <CondicionesPlantacion res={res} />
-        </Paso>
-      )}
-
-      <Paso n="9-11" titulo="Motor de simulación y resultado" apagado={!res}>
-        {listo && s.cultivo && !res && (
-          <p className="text-ui-ink-muted">
-            No hay rendimiento de referencia para este cultivo en la provincia.
-          </p>
-        )}
-        {res?.ev?.estado === 'no_apta' && (
-          <div className="rounded bg-red-100 px-2 py-1 text-red-900">
-            <p className="font-semibold">
-              No se calcula el rendimiento: {res.nombre.toLowerCase()} no es apto aquí.
+            <p className="mb-2 text-2xs text-ui-ink-muted">
+              El cultivo, sus condiciones de plantación, el rendimiento del motor de Junín y la rotación se
+              eligen en el simulador 3D: así la cifra que ves es la misma que cosechas. En 3D se siembran
+              papa, maíz amiláceo, quinua, haba y avena forrajera (los cultivos con datos de fenología y
+              balance hídrico).
             </p>
-            {res.ev.razones
-              .filter((r) => r.severidad === 'bloqueo')
-              .map((r) => (
-                <p key={r.codigo} className="text-2xs">
-                  ⛔ {r.mensaje_es}
-                </p>
-              ))}
-            <p className="mt-1 text-2xs">Elige otro cultivo o mira las condiciones en el paso 8b.</p>
-          </div>
-        )}
-        {res && res.ev?.estado !== 'no_apta' && (
-          <>
-            <div className="mb-2 flex flex-wrap items-center gap-1">
-              <span className="rounded bg-ui-panel-2 px-1.5 py-0.5 text-2xs font-semibold">
-                Motor: {res.r.motor_etiqueta}
-              </span>
-              {res.r.fuera_de_provincia && (
-                <span className="rounded bg-amber-100 px-1.5 py-0.5 text-2xs text-amber-900">
-                  Fuera de su provincia
-                </span>
-              )}
-            </div>
-            <div className="mb-2 grid grid-cols-3 gap-1 text-center">
-              <div className="rounded bg-ui-panel-2 p-1.5">
-                <div className="value text-base font-semibold">
-                  {res.rc ? res.rc.rend_parcela_t_ha.toFixed(2) : res.r.rend_t_ha.toFixed(2)}
-                </div>
-                <div className="text-2xs text-ui-ink-muted">t/ha en tu parcela</div>
-              </div>
-              <div className="rounded bg-ui-panel-2 p-1.5">
-                <div className="value text-base font-semibold">
-                  {res.rc ? res.rc.produccion_t.toFixed(1) : '—'}
-                </div>
-                <div className="text-2xs text-ui-ink-muted">
-                  t en {fmt(res.rc?.area_ha ?? s.area_ha, 3)} ha útiles
-                </div>
-              </div>
-              <div className="rounded bg-ui-panel-2 p-1.5">
-                <div className="value text-base font-semibold">{res.r.rend_t_ha.toFixed(2)}</div>
-                <div className="text-2xs text-ui-ink-muted">t/ha del punto</div>
-              </div>
-            </div>
-            <Dato k="Referencia DRA 2022" v={`${res.r.componentes.rend_ref_t_ha.toFixed(2)} t/ha`} />
-            {res.r.componentes.factor_agua != null && (
-              <Dato k="× Factor de agua (FAO-56)" v={res.r.componentes.factor_agua.toFixed(2)} />
-            )}
-            {res.r.motor === 'aquacrop' && (
-              <Dato k="× Anomalía AquaCrop" v={fmt(res.r.componentes.anomalia_aquacrop, 3)} />
-            )}
-            <Dato k="× Rotación" v={res.r.componentes.efecto_rotacion.toFixed(2)} />
-            {res.r.componentes.aptitud != null && (
-              <Dato k="× Aptitud EcoCrop" v={res.r.componentes.aptitud.toFixed(2)} />
-            )}
-            {res.ev && res.ev.factor_helada < 1 && (
-              <Dato k="× Helada (temperatura corregida por altura)" v={res.ev.factor_helada.toFixed(2)} />
-            )}
-            {res.rc && (
-              <Dato k="× Chunks (uso de suelo y pH vs. el punto)" v={res.rc.factor_parcela.toFixed(2)} />
-            )}
-            {res.ev?.confianza.rango_t_ha && res.rc && res.ev.confianza.nivel !== 'alta' && (
-              <Dato
-                k={`Rango (confianza ${res.ev.confianza.nivel}, ${res.ev.confianza.distancia_km} km)`}
-                v={`${(res.ev.confianza.rango_t_ha[0] * (res.rc.rend_parcela_t_ha / res.r.rend_t_ha)).toFixed(2)}–${(res.ev.confianza.rango_t_ha[1] * (res.rc.rend_parcela_t_ha / res.r.rend_t_ha)).toFixed(2)} t/ha`}
-              />
-            )}
-            {res.ev?.marco?.plantas_m2 != null && res.rc && (
-              <Dato
-                k={`Plantas (${res.ev.marco.variedad})`}
-                v={`${Math.round(res.ev.marco.plantas_m2 * res.rc.area_ha * 10_000).toLocaleString('es-PE')} · ${res.kg_planta?.toFixed(2) ?? '—'} kg/planta`}
-              />
-            )}
-            {res.r.referencia_aquacrop_t_ha != null && res.r.motor === 'balance_fao56' && (
-              <Dato
-                k="Apoyo AquaCrop (mismo escenario)"
-                v={`${res.r.referencia_aquacrop_t_ha.toFixed(2)} t/ha`}
-              />
-            )}
-            {res.r.siembra && <Dato k="Siembra" v={res.r.siembra} />}
-            <div className="mt-2 space-y-1">
-              {res.r.alerta_helada && (
-                <p className="text-blue-800">
-                  ❄ Riesgo de helada en {camp?.meses_riesgo_helada} mes(es) del ciclo.
-                </p>
-              )}
-              {res.r.alerta_deficit && (
-                <p className="text-amber-700">💧 Déficit hídrico: el agua limita el rendimiento.</p>
-              )}
-              {!res.r.alerta_helada && !res.r.alerta_deficit && (
-                <p className="text-green-800">Sin alertas de helada ni déficit.</p>
-              )}
-            </div>
-            {camp && feno && (
-              <table className="mt-2 w-full text-2xs">
-                <thead>
-                  <tr className="text-ui-ink-muted">
-                    <th className="text-left font-normal">Mes</th>
-                    <th className="text-left font-normal">Fase</th>
-                    <th className="text-right font-normal">Kc</th>
-                    <th className="text-right font-normal">Ks (estrés)</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {Object.entries(camp.mensual).map(([mes, m], i) => {
-                    const dia = i * 30 + 15;
-                    const fase =
-                      feno.fases.find((f) => dia >= f.dia_ini && dia <= f.dia_fin) ??
-                      feno.fases[feno.fases.length - 1];
-                    return (
-                      <tr key={mes}>
-                        <td>{mes}</td>
-                        <td className="truncate">{fase.fase}</td>
-                        <td className="value text-right">{m.kc.toFixed(2)}</td>
-                        <td
-                          className={`value text-right ${m.ks < 0.7 ? 'text-ui-danger' : m.ks < 0.9 ? 'text-amber-700' : ''}`}
-                        >
-                          {m.ks.toFixed(2)}
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            )}
-            <p className="mt-2 text-2xs text-ui-ink-muted">
-              Motores: {Object.values(MOTOR_ETIQUETA).join(' · ')}.
-            </p>
-            <p className="text-2xs font-medium text-ui-accent">{ETIQUETA_SIMULACION}</p>
             <button
-              className="btn btn-active mt-2 w-full justify-center"
+              className="btn btn-active w-full justify-center"
               onClick={() => {
                 const err = jc.abrirEn3D();
                 if (err) useJuninStore.setState({ error: err });
               }}
             >
-              Ver la parcela en 3D{' '}
-              {s.cultivo && CULTIVO_SIMULADOR[s.cultivo] ? `y sembrar ${res.nombre.toLowerCase()}` : ''}
-            </button>
-            {s.cultivo && !CULTIVO_SIMULADOR[s.cultivo] && (
-              <p className="mt-1 text-2xs text-ui-ink-muted">
-                En 3D se pueden sembrar papa, maíz amiláceo, quinua, haba y avena forrajera.
-              </p>
-            )}
-          </>
-        )}
-      </Paso>
-
-      <Paso n={12} titulo="Rotación (2 campañas)" apagado={!res && !s.plan.length}>
-        {res && res.ev?.estado !== 'no_apta' && (
-          <button
-            className="btn w-full justify-center"
-            onClick={() =>
-              jc.agregarARotacion(
-                res.r,
-                res.nombre,
-                res.rc?.produccion_t ?? 0,
-                res.rc?.rend_parcela_t_ha ?? res.rend_t_ha,
-              )
-            }
-          >
-            {s.campana === 0
-              ? 'Guardar 2026-27 y elegir el cultivo de 2027-28'
-              : 'Guardar la campaña 2027-28'}
-          </button>
-        )}
-        {s.plan.length > 0 && (
-          <>
-            <table className="mt-2 w-full text-2xs">
-              <tbody>
-                {s.plan.map((p) => (
-                  <tr key={p.campana}>
-                    <td>{p.campana === 0 ? '2026-27' : '2027-28'}</td>
-                    <td>
-                      {p.nombre}
-                      {p.anterior ? ` (después de ${p.anterior})` : ''}
-                    </td>
-                    <td className="value text-right">{p.rend_t_ha.toFixed(2)} t/ha</td>
-                    <td className="value text-right">{p.produccion_t.toFixed(1)} t</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-            <Dato k="Producción total" v={`${s.plan.reduce((a, p) => a + p.produccion_t, 0).toFixed(1)} t`} />
-            <button className="btn mt-1" onClick={() => jc.reiniciarRotacion()}>
-              Reiniciar rotación
+              Abrir la parcela en 3D
             </button>
           </>
         )}
-        <p className="mt-1 text-2xs text-ui-ink-muted">
-          El cultivo guardado pasa a ser el «anterior» de la campaña siguiente (p. ej. papa después de haba ×
-          1.1).
-        </p>
       </Paso>
     </div>
   );

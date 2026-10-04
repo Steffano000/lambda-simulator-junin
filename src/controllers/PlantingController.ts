@@ -9,15 +9,26 @@ import type { ClimaHoy, DetalleCultivo } from '@/domain/plantation';
 import { BaseController } from './BaseController';
 
 export class PlantingController extends BaseController {
-  /** Cultivos cuya textura preferida coincide con el terreno. */
+  /**
+   * Cultivos cuya textura preferida coincide con el terreno. En la parcela real de Junín se
+   * ofrecen todos: la textura es una advertencia de las condiciones de plantación (Fase 3),
+   * no un bloqueo (la papa se siembra en suelos franco arcillosos del Mantaro).
+   */
   aptos(): Crop[] {
     const t = this.state.terreno;
-    return t ? this.deps.crops.all().filter((c) => c.texturaCompatible(t.textura)) : [];
+    if (!t) return [];
+    if (this.parcelaReal()) return [...this.deps.crops.all()];
+    return this.deps.crops.all().filter((c) => c.texturaCompatible(t.textura));
   }
 
   noAptos(): Crop[] {
     const t = this.state.terreno;
-    return t ? this.deps.crops.all().filter((c) => !c.texturaCompatible(t.textura)) : [];
+    if (!t || this.parcelaReal()) return [];
+    return this.deps.crops.all().filter((c) => !c.texturaCompatible(t.textura));
+  }
+
+  private parcelaReal(): boolean {
+    return this.state.tiles.some((t) => t.ladoM != null);
   }
 
   selectCrop(cultivo: string | null): void {

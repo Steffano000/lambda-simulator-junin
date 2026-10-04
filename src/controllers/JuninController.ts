@@ -257,15 +257,18 @@ export class JuninController {
   }
   setEscenario(escenario: EscenarioId): void {
     set({ escenario });
+    if (get().modo === 'simulador') this.sincronizar3D();
   }
   setCultivo(cultivo: string | null): void {
     set({ cultivo });
   }
   setAnterior(anterior: string | null): void {
     set({ anterior });
+    if (get().modo === 'simulador') this.sincronizar3D();
   }
   setCampana(campana: number): void {
     set({ campana });
+    if (get().modo === 'simulador') this.sincronizar3D();
   }
   setUltimoResultado(r: ResultadoRendimiento | null): void {
     if (get().ultimoResultado !== r) set({ ultimoResultado: r });
@@ -297,31 +300,34 @@ export class JuninController {
       campana: siguiente,
       cultivo: siguiente === r.campana ? r.cultivo : null,
     });
+    if (get().modo === 'simulador') this.sincronizar3D();
   }
   reiniciarRotacion(): void {
     set({ plan: [], anterior: null, campana: 0 });
+    if (get().modo === 'simulador') this.sincronizar3D();
   }
 
   /** Abre la parcela real en el simulador 3D con el escenario y el cultivo elegidos */
-  abrirEn3D(): string | null {
-    const { chunks, nucleo, ubicacion, escenario, campana, cultivo, resolucion } = get();
-    if (!chunks || !nucleo || !ubicacion) return 'Primero dibuja una parcela.';
-    // Rendimiento del motor de Junín por chunk para cada cultivo que existe en el 3D:
-    // la cosecha del 3D = este número × salud de la celda × área real de la celda
-    const pp = nucleo.sim.puntos[ubicacion.punto];
+  /**
+   * Rendimiento del motor de Junín por chunk para cada cultivo del 3D (escenario, campaña y
+   * cultivo anterior actuales). La cosecha del 3D = este número × salud × área de la celda.
+   * Los cultivos no aptos (condiciones de plantación) quedan en 0.
+   */
+  private rendimientos3D(): { rendJunin: Record<string, (number | null)[]>; noAptos: string[] } {
+    const { chunks, nucleo, ubicacion, escenario, campana, anterior, resumen } = get();
     const rendJunin: Record<string, (number | null)[]> = {};
     const noAptos: string[] = [];
-    const { resumen } = get();
+    if (!chunks || !nucleo || !ubicacion) return { rendJunin, noAptos };
+    const pp = nucleo.sim.puntos[ubicacion.punto];
     for (const [id, nombre3D] of Object.entries(CULTIVO_SIMULADOR)) {
-      const r = rendimiento(ubicacion.punto, escenario, id, get().anterior, nucleo, campana);
+      const r = rendimiento(ubicacion.punto, escenario, id, anterior, nucleo, campana);
       if (!r) continue;
-      // Condiciones de plantación (Fase 3): si no es apto, su cosecha en 3D es 0
       const ev = resumen
         ? evaluarSiembra({
             cultivo: id,
             escenario,
             campana,
-            anterior: get().anterior,
+            anterior,
             punto: ubicacion.punto,
             distancia_km: ubicacion.distancia_km,
             chunks,
@@ -339,19 +345,57 @@ export class JuninController {
         pp?.suelo.ph ?? null,
       ).porChunk;
     }
-    const p = parcelaParaSimulador(chunks, container.terrains.clases(), rendJunin);
-    const terreno = new TerrainProfile(p.dominante, p.reaccion, p.config, SoilMix.de(p.mezcla), 'manchas');
+    return { rendJunin, noAptos };
+  }
 
-    // Clima: los 12 meses de la campaña del escenario elegido, como escenario de la app
+  /** Clima de la campaña del escenario elegido, registrado como escenario de la app */
+  private escenario3D(): string {
+    const { nucleo, ubicacion, escenario, campana } = get();
+    let escenarioApp = useSimStore.getState().escenario;
+    if (!nucleo || !ubicacion) return escenarioApp;
     const nombre = nombreEscenario(nucleo.sim, ubicacion.punto, escenario, campana);
     const meses = aClimaMes(nucleo.sim.puntos[ubicacion.punto].escenarios[escenario].meses, campana * 12);
-    let escenarioApp = useSimStore.getState().escenario;
     try {
       if (!container.scenarios.existe(nombre)) container.scenarios.custom(nombre, meses);
       escenarioApp = nombre;
     } catch {
       /* si el clima no pasa la validación de la app, se mantiene el escenario actual */
     }
+    return escenarioApp;
+  }
+
+  /**
+   * En el 3D se cambió el escenario, la campaña o el cultivo anterior: se actualizan el clima y
+   * el rendimiento de referencia de cada celda sin borrar lo que ya se hizo en el terreno.
+   */
+  sincronizar3D(): void {
+    const { chunks } = get();
+    const sim = useSimStore.getState();
+    if (!chunks || !sim.tiles.some((t) => t.ladoM != null)) return;
+    const { rendJunin } = this.rendimientos3D();
+    const rendDe = (fila: number, columna: number) => {
+      const i = fila * chunks.columnas + columna;
+      const r: Record<string, number> = {};
+      for (const [c, arr] of Object.entries(rendJunin)) if (arr[i] != null) r[c] = arr[i]!;
+      return Object.keys(r).length ? r : null;
+    };
+    useSimStore.setState({
+      escenario: this.escenario3D(),
+      tiles: sim.tiles.map((t) =>
+        t.bloqueado || t.oculto ? t : { ...t, rendJuninTHa: rendDe(t.coords.z, t.coords.x) },
+      ),
+    });
+  }
+
+  /** Abre la parcela real en el simulador 3D: ahí se eligen cultivo, campaña y rotación */
+  abrirEn3D(): string | null {
+    const { chunks, nucleo, ubicacion, escenario, campana, cultivo, resolucion } = get();
+    if (!chunks || !nucleo || !ubicacion) return 'Primero dibuja una parcela.';
+    const { rendJunin, noAptos } = this.rendimientos3D();
+    const p = parcelaParaSimulador(chunks, container.terrains.clases(), rendJunin);
+    const terreno = new TerrainProfile(p.dominante, p.reaccion, p.config, SoilMix.de(p.mezcla), 'manchas');
+
+    const escenarioApp = this.escenario3D();
     const camp = cultivo
       ? nucleo.sim.puntos[ubicacion.punto].escenarios[escenario].cultivos[cultivo]?.[campana]
       : null;
@@ -386,11 +430,7 @@ export class JuninController {
                 `No aptos en esta parcela (condiciones de plantación): ${noAptos.join(', ')}. Si los siembras, su cosecha será 0.`,
               ]
             : []),
-          ...(cultivo && !CULTIVO_SIMULADOR[cultivo]
-            ? [
-                `${nucleo.catalogo.cultivos[cultivo]?.nombre ?? cultivo} no se simula en 3D: aquí puedes sembrar ${Object.values(CULTIVO_SIMULADOR).join(', ').toLowerCase()}, cada uno con su rendimiento del motor de Junín para esta parcela.`,
-              ]
-            : []),
+          `Elige el cultivo en «Cultivos»: ahí verás sus condiciones de plantación y el rendimiento del motor de Junín, que es el mismo que cosecharás.`,
           `Supuestos del simulador (no son datos medidos): P ${SUPUESTOS_SIMULADOR.p}, K ${SUPUESTOS_SIMULADOR.k} y humedad inicial ${SUPUESTOS_SIMULADOR.humedad} %.`,
           ...(resolucion
             ? [

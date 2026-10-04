@@ -89,13 +89,26 @@ describe('motor de Junín', () => {
     expect(efectoRotacion(null, 'papa', n.fenologia)).toBe(1);
   });
 
-  it('rendimiento FAO-56 = referencia DRA × factor de agua × rotación', () => {
+  it('rendimiento FAO-56 = referencia DRA × anomalía del factor de agua × rotación', () => {
     const r = rendimiento('huayao_igp', 'nino', 'papa', 'haba', n)!;
     const camp = n.sim.puntos.huayao_igp.escenarios.nino.cultivos.papa[0];
+    const normal = n.sim.puntos.huayao_igp.escenarios.normal.cultivos.papa[0];
     expect(r.motor).toBe('balance_fao56');
-    expect(r.rend_t_ha).toBeCloseTo(camp.rend_ref_t_ha * camp.factor_agua * 1.1, 1);
+    const anomalia = Math.round((camp.factor_agua / normal.factor_agua) * 100) / 100;
+    expect(r.rend_t_ha).toBeCloseTo(camp.rend_ref_t_ha * anomalia * 1.1, 1);
+    // un año normal da el rendimiento DRA (no se descuenta la sequía normal dos veces)
+    const rn = rendimiento('huayao_igp', 'normal', 'papa', null, n)!;
+    expect(rn.componentes.anomalia_balance).toBe(1);
+    expect(rn.rend_t_ha).toBeCloseTo(normal.rend_ref_t_ha, 1);
     expect(r.referencia_aquacrop_t_ha).not.toBeNull();
     expect(r.etiqueta).toMatch(/PISCO/);
+  });
+
+  it('un cultivo de la provincia no se escala por aptitud (maíz choclo en Concepción)', () => {
+    const r = rendimiento('concepcion', 'normal', 'maiz_choclo', null, n)!;
+    expect(r.fuera_de_provincia).toBe(false);
+    expect(r.componentes.aptitud).toBeNull();
+    expect(r.rend_t_ha).toBeCloseTo(r.componentes.rend_ref_t_ha, 1);
   });
 
   it('cebada usa AquaCrop y olluco usa DRA × aptitud', () => {

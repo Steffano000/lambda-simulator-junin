@@ -3,10 +3,15 @@
  * Port de INTEGRACION_SISTEMAS/frontend/simulador.js, con el motor que corresponde a cada cultivo:
  *
  * - Balance hídrico FAO-56 (papa, maíz amiláceo, quinua, haba, avena forrajera):
- *     rend = referencia DRA × factor de agua × rotación  (× aptitud si está fuera de su provincia)
+ *     rend = referencia DRA × (factor de agua del escenario ÷ factor de agua del clima normal)
+ *            × rotación  (× aptitud si está fuera de su provincia)
+ *   Es una ANOMALÍA, igual que AquaCrop: el DRA 2022 ya es lo que se cosechó con la lluvia real,
+ *   así que multiplicarlo por el factor de agua absoluto descontaba la sequía «normal» dos veces.
+ *   Un año normal da el rendimiento DRA; uno más seco, menos.
  * - AquaCrop (papa, quinua, cebada): anomalía del escenario sobre el rendimiento DRA.
  *     Para papa y quinua es un dato de apoyo; para cebada es el motor principal.
- * - Resto de cultivos: rendimiento DRA de la provincia × aptitud EcoCrop, sin balance.
+ * - Resto de cultivos: rendimiento DRA de la provincia, sin balance (× aptitud EcoCrop solo si
+ *   el cultivo no se siembra en la provincia: el DRA de la provincia ya refleja su clima).
  */
 import type {
   AquaCropResumen,
@@ -170,6 +175,10 @@ export interface ResultadoRendimiento {
   componentes: {
     rend_ref_t_ha: number;
     factor_agua: number | null;
+    /** Factor de agua del mismo cultivo y campaña con el clima normal 1991-2020 */
+    factor_agua_normal: number | null;
+    /** factor_agua ÷ factor_agua_normal (1 = año normal) */
+    anomalia_balance: number | null;
     efecto_rotacion: number;
     aptitud: number | null;
     anomalia_aquacrop: number | null;
@@ -223,19 +232,23 @@ export function rendimiento(
   if (motor === 'balance_fao56') {
     const camp: Campana | undefined = p.escenarios[escenario].cultivos[cultivo]?.[campana];
     if (!camp) return null;
+    const normal = p.escenarios.normal?.cultivos[cultivo]?.[campana]?.factor_agua ?? null;
+    const anomalia = normal ? r2(camp.factor_agua / normal) : 1;
     return {
       ...base,
       siembra: camp.siembra,
-      rend_t_ha: r2(camp.rend_ref_t_ha * camp.factor_agua * rot * factorFuera),
+      rend_t_ha: r2(camp.rend_ref_t_ha * anomalia * rot * factorFuera),
       componentes: {
         rend_ref_t_ha: camp.rend_ref_t_ha,
         factor_agua: camp.factor_agua,
+        factor_agua_normal: normal,
+        anomalia_balance: anomalia,
         efecto_rotacion: rot,
         aptitud: fuera ? aptitud : null,
         anomalia_aquacrop: aq?.anomalia ?? null,
       },
       alerta_helada: camp.meses_riesgo_helada > 0,
-      alerta_deficit: camp.factor_agua < 0.9,
+      alerta_deficit: anomalia < 0.9,
     };
   }
 
@@ -248,6 +261,8 @@ export function rendimiento(
       componentes: {
         rend_ref_t_ha: ref,
         factor_agua: null,
+        factor_agua_normal: null,
+        anomalia_balance: null,
         efecto_rotacion: rot,
         aptitud: fuera ? aptitud : null,
         anomalia_aquacrop: aq.anomalia,
@@ -259,18 +274,20 @@ export function rendimiento(
 
   const ref = rendimientoDra(prov, cultivo, catalogo);
   if (ref == null) return null;
-  const apt = aptitud ?? 1;
+  // La aptitud EcoCrop solo escala a los cultivos que NO se siembran en la provincia
   return {
     ...base,
     motor: 'dra_aptitud',
     motor_etiqueta: MOTOR_ETIQUETA.dra_aptitud,
     siembra: null,
-    rend_t_ha: r2(ref * apt * rot),
+    rend_t_ha: r2(ref * factorFuera * rot),
     componentes: {
       rend_ref_t_ha: r2(ref),
       factor_agua: null,
+      factor_agua_normal: null,
+      anomalia_balance: null,
       efecto_rotacion: rot,
-      aptitud,
+      aptitud: fuera ? aptitud : null,
       anomalia_aquacrop: null,
     },
     alerta_helada: false,

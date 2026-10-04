@@ -12,6 +12,10 @@ import {
   type ResultadoRendimiento,
 } from '@/domain/junin';
 import { useJuninStore } from '@/store/juninStore';
+import { useSimStore } from '@/store/useSimStore';
+
+/** ¿El terreno del 3D es una parcela real de Junín? */
+export const useEsParcelaReal = () => useSimStore((s) => s.tiles.some((t) => t.ladoM != null));
 
 export interface ResultadoJunin {
   r: ResultadoRendimiento;
