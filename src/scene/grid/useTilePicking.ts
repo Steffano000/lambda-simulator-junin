@@ -16,7 +16,14 @@ export interface TilePicking {
   onPointerMissed: (e: MouseEvent) => void;
 }
 
-export function useTilePicking(tiles: readonly TileNode[]): TilePicking {
+/**
+ * @param idDeEvento cómo saber qué celda tocó el puntero; por defecto, la instancia del bloque.
+ *   La superficie continua (Fase 5) lo calcula con el punto de impacto.
+ */
+export function useTilePicking(
+  tiles: readonly TileNode[],
+  idDeEvento?: (e: ThreeEvent<PointerEvent>) => string | undefined,
+): TilePicking {
   const { selection } = useControllers();
 
   // El arrastre puede terminar fuera del canvas
@@ -27,8 +34,9 @@ export function useTilePicking(tiles: readonly TileNode[]): TilePicking {
   }, [selection]);
 
   return useMemo(() => {
-    const idDe = (e: ThreeEvent<PointerEvent>) =>
-      e.instanceId !== undefined ? tiles[e.instanceId]?.id : undefined;
+    const idDe =
+      idDeEvento ??
+      ((e: ThreeEvent<PointerEvent>) => (e.instanceId !== undefined ? tiles[e.instanceId]?.id : undefined));
 
     return {
       onPointerDown: (e: ThreeEvent<PointerEvent>) => {
@@ -46,5 +54,5 @@ export function useTilePicking(tiles: readonly TileNode[]): TilePicking {
         if (e.button === 0) selection.clear();
       },
     };
-  }, [selection, tiles]);
+  }, [selection, tiles, idDeEvento]);
 }

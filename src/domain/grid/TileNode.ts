@@ -69,6 +69,8 @@ export interface TileNode {
   areaM2?: number;
   /** Parcela real: lado de la celda en metros (tamaño de chunk); 1 m si no */
   ladoM?: number;
+  /** Parcela real: la celda no tiene altura medida (su `elevacion` es solo de relleno) */
+  sinAltura?: boolean;
   /**
    * Parcela real: rendimiento del motor de Junín (t/ha) para cada cultivo del 3D en esta celda
    * (escenario, campaña y cultivo anterior elegidos; × uso de suelo y pH del chunk).

@@ -123,6 +123,7 @@ export function parcelaParaSimulador(
       // área real de la celda: chunk² × fracción dentro del polígono (no 1 m²)
       areaM2: +(c.fraccion * g.celda_m ** 2).toFixed(3),
       ladoM: g.celda_m,
+      ...(c.elevacion_m == null ? { sinAltura: true } : {}),
       rendJuninTHa: util ? rendDe(c.fila * g.columnas + c.columna) : null,
     };
   });

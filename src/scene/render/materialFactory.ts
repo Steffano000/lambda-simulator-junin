@@ -21,7 +21,8 @@ const builders: Record<MaterialCategory, () => THREE.Material> = {
   'planta-fantasma': () =>
     new THREE.MeshLambertMaterial({ flatShading: true, transparent: true, opacity: 0.45, depthWrite: false }),
   agua: () => new THREE.MeshLambertMaterial({ color: surface.agua, transparent: true, opacity: 0.85 }),
-  nube: () => new THREE.MeshLambertMaterial({ flatShading: true, transparent: true, opacity: 0.92 }),
+  // Nubes suaves (Fase 4): sombreado continuo, no facetado
+  nube: () => new THREE.MeshLambertMaterial({ flatShading: false, transparent: true, opacity: 0.94 }),
   seleccion: () =>
     new THREE.MeshBasicMaterial({ color: marcador.seleccion, transparent: true, opacity: 0.95 }),
   resaltada: () => new THREE.MeshBasicMaterial({ color: marcador.resaltada }),

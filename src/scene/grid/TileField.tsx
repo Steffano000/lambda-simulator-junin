@@ -8,6 +8,7 @@ import type { TileNode } from '@/domain/grid';
 import type { Overlay } from '@/store/useSimStore';
 import { BLOQUE_GAP, InstanceField, TILE_SIZE, getMaterial } from '@/scene/render';
 import { tileCenter, tileColor, tileHeight, type GridOffset } from '@/scene/tiles';
+import { useVistaStore } from '@/store/vistaStore';
 import type { TilePicking } from './useTilePicking';
 
 /** Cubo de 1 m³ con el pivote en el centro: la altura se escala desde la base. */
@@ -20,8 +21,10 @@ export interface TileFieldProps extends TilePicking {
 }
 
 export function TileField({ tiles, offset, overlay, ...pointer }: TileFieldProps) {
+  const sombra = useVistaStore((s) => s.sombraNubes);
   return (
     <InstanceField
+      receiveShadow={sombra}
       geometry={BLOQUE}
       material={getMaterial('terreno')}
       items={tiles}

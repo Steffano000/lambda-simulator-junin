@@ -17,8 +17,10 @@ const CAMERA = { fov: 45, near: 0.1, far: 1000 } as const;
 const DPR: [number, number] = [1, 2];
 
 export function SceneCanvas() {
+  // El mapa de sombras queda habilitado: solo proyectan las nubes y solo si la vista lo pide
+  // (cambiar `shadows` en caliente no recompila los materiales ya creados)
   return (
-    <Canvas camera={CAMERA} dpr={DPR} className="bg-ui-scene">
+    <Canvas camera={CAMERA} dpr={DPR} shadows className="bg-ui-scene">
       <Sky />
       <Lighting />
       <GridRoot />

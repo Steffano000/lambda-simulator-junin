@@ -45,6 +45,9 @@ export interface InstanceFieldProps<T> extends InstancePointer {
   interactive?: boolean;
   /** Valores de los que dependen `place`/`paint` y que deben forzar el redibujo. */
   deps?: readonly unknown[];
+  /** Sombras (apagadas salvo que la vista las pida: sombra de nubes, Fase 4) */
+  castShadow?: boolean;
+  receiveShadow?: boolean;
 }
 
 export function InstanceField<T>({
@@ -56,6 +59,8 @@ export function InstanceField<T>({
   paint,
   interactive,
   deps = EMPTY,
+  castShadow = false,
+  receiveShadow = false,
   ...pointer
 }: InstanceFieldProps<T>) {
   const ref = useRef<THREE.InstancedMesh>(null);
@@ -88,6 +93,8 @@ export function InstanceField<T>({
       args={[geometry, material, caben]}
       dispose={null}
       raycast={interactive ? undefined : SIN_RAYCAST}
+      castShadow={castShadow}
+      receiveShadow={receiveShadow}
       {...pointer}
     />
   );
