@@ -40,8 +40,14 @@ export interface EntradaNubes {
   seed: number;
 }
 
-/** Margen entre el terreno y la base de las nubes: mínimo 3 u, o 12 % del lado mayor */
-export const margenNubes = (rows: number, cols: number) => Math.max(3, 0.12 * Math.max(rows, cols));
+/**
+ * Margen entre el terreno y la base de las nubes: proporcional a la parcela (45 % del lado mayor,
+ * mínimo 5 u). No es la altura real (una nube está a cientos de metros), es una proporción que
+ * las deja bien arriba del relieve sin salirse del encuadre.
+ */
+export const MARGEN_NUBES = { minimo: 5, fraccionLado: 0.45 } as const;
+export const margenNubes = (rows: number, cols: number) =>
+  Math.max(MARGEN_NUBES.minimo, MARGEN_NUBES.fraccionLado * Math.max(rows, cols));
 
 /** Cobertura del cielo (0-1) a partir del tiempo del día */
 export function coberturaDia(nubes: boolean, probabilidad: number, lluvia: Intensidad | null): number {

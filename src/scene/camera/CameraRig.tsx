@@ -24,7 +24,9 @@ const ORBITA = {
 } as const;
 
 /** Encuadre inicial: la diagonal marca la escala de la parcela. */
-const GOD_VIEW = { factor: 0.9, altura: 0.9 } as const;
+/** `mira`: altura del punto al que mira la cámara (fracción de la diagonal) para que entren
+ *  el terreno y las nubes, que van bien arriba (Fase 4) */
+const GOD_VIEW = { factor: 1, altura: 0.75, mira: 0.12 } as const;
 
 export function CameraRig() {
   const { rows, cols } = useSimStore((s) => s.config);
@@ -34,7 +36,7 @@ export function CameraRig() {
   useEffect(() => {
     const d = diagonal * GOD_VIEW.factor;
     camera.position.set(d, d * GOD_VIEW.altura, d);
-    camera.lookAt(0, 0, 0);
+    camera.lookAt(0, diagonal * GOD_VIEW.mira, 0);
   }, [camera, diagonal]);
 
   return (
@@ -42,7 +44,7 @@ export function CameraRig() {
       makeDefault
       enableDamping
       mouseButtons={BOTONES}
-      target={[0, 0, 0]}
+      target={[0, diagonal * GOD_VIEW.mira, 0]}
       minDistance={ORBITA.distanciaMin}
       maxDistance={diagonal * ORBITA.factorMax}
       maxPolarAngle={ORBITA.anguloPolarMax}

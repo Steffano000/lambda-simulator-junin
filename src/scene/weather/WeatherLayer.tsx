@@ -12,7 +12,7 @@
  * La nube es solo la representación del evento climático, no una acción de riego.
  */
 import { useFrame } from '@react-three/fiber';
-import { useEffect, useMemo, useRef } from 'react';
+import { useEffect, useMemo } from 'react';
 import * as THREE from 'three';
 import { useClimaHoy } from '@/controllers/hooks';
 import type { Intensidad } from '@/domain/climate';
@@ -24,10 +24,19 @@ import { useVistaStore } from '@/store/vistaStore';
 import { clima } from '@/theme/tokens';
 import { coberturaDia, planNubes, type PuffNube } from './cloudPlan';
 
-/** Gotas por cada 100 celdas según la intensidad de la lluvia. */
-const GOTAS: Record<Intensidad, number> = { debil: 220, moderada: 450, fuerte: 800, 'muy-fuerte': 1200 };
-const VELOCIDAD = 9; // m/s (escala de la escena)
-const LARGO_GOTA = 0.35;
+/**
+ * Lluvia proporcional (no realista): gotas por unidad² SOLO bajo cada nube, según la intensidad.
+ * Así llueve donde hay nube y la lluvia no tapa la parcela.
+ */
+const GOTAS_POR_U2: Record<Intensidad, number> = {
+  debil: 0.25,
+  moderada: 0.5,
+  fuerte: 0.9,
+  'muy-fuerte': 1.4,
+};
+const MAX_GOTAS = 3000;
+/** Segundos que tarda una gota en caer desde la base de la nube (la velocidad se ajusta a la altura) */
+const SEGUNDOS_CAIDA = 2.2;
 /** Altura que pueden alcanzar las plantas sobre la celda (las nubes van por encima) */
 const ALTO_PLANTAS = 1.6;
 
@@ -35,13 +44,9 @@ const ALTO_PLANTAS = 1.6;
 const PUFF = new THREE.IcosahedronGeometry(1, 3);
 
 function Clouds({ puffs, lluvia, sombra }: { puffs: PuffNube[]; lluvia: boolean; sombra: boolean }) {
-  const grupo = useRef<THREE.Group>(null);
-  useFrame((_, dt) => {
-    // giro lento alrededor del eje vertical: la base no cambia de altura
-    if (grupo.current) grupo.current.rotation.y += dt * 0.02;
-  });
+  // Quietas: la lluvia cae justo debajo de cada nube
   return (
-    <group ref={grupo}>
+    <group>
       <InstanceField
         geometry={PUFF}
         material={getMaterial('nube')}
@@ -56,39 +61,53 @@ function Clouds({ puffs, lluvia, sombra }: { puffs: PuffNube[]; lluvia: boolean;
 }
 
 function Rain({
-  cantidad,
-  ancho,
-  fondo,
+  nubes,
+  intensidad,
   altura,
   suelo,
   seed,
 }: {
-  cantidad: number;
-  ancho: number;
-  fondo: number;
+  nubes: { x: number; z: number; r: number }[];
+  intensidad: Intensidad;
   altura: number;
   /** Altura de la superficie bajo (x, z) */
   suelo: (x: number, z: number) => number;
   seed: number;
 }) {
-  const { geometria, pisos } = useMemo(() => {
-    const azar = createRng(seed + cantidad);
+  const { geometria, pisos, largo, velocidad } = useMemo(() => {
+    const azar = createRng(seed + nubes.length);
+    const area = nubes.reduce((a, n) => a + Math.PI * n.r * n.r, 0);
+    const cantidad = Math.min(MAX_GOTAS, Math.round(area * GOTAS_POR_U2[intensidad]));
+    // gota y velocidad proporcionales a la altura de caída
+    const caida = Math.max(1, altura - Math.min(...nubes.map((n) => suelo(n.x, n.z))));
+    const largo = Math.max(0.3, caida * 0.04);
+    const velocidad = caida / SEGUNDOS_CAIDA;
     const pos = new Float32Array(cantidad * 6);
     const pisos = new Float32Array(cantidad);
     for (let i = 0; i < cantidad; i++) {
-      const x = (azar() - 0.5) * ancho;
-      const z = (azar() - 0.5) * fondo;
+      // un punto al azar bajo una nube (las más grandes reciben más gotas)
+      let k = azar() * area;
+      let n = nubes[0];
+      for (const m of nubes) {
+        k -= Math.PI * m.r * m.r;
+        n = m;
+        if (k <= 0) break;
+      }
+      const a = azar() * Math.PI * 2;
+      const d = Math.sqrt(azar()) * n.r * 0.85;
+      const x = n.x + Math.cos(a) * d;
+      const z = n.z + Math.sin(a) * d * 0.7;
       pisos[i] = suelo(x, z);
       const y = pisos[i] + azar() * (altura - pisos[i]);
-      pos.set([x, y, z, x, y - LARGO_GOTA, z], i * 6);
+      pos.set([x, y, z, x, y - largo, z], i * 6);
     }
     const g = new THREE.BufferGeometry();
     g.setAttribute('position', new THREE.BufferAttribute(pos, 3));
-    return { geometria: g, pisos };
-  }, [cantidad, ancho, fondo, altura, suelo, seed]);
+    return { geometria: g, pisos, largo, velocidad };
+  }, [nubes, intensidad, altura, suelo, seed]);
 
   const material = useMemo(
-    () => new THREE.LineBasicMaterial({ color: clima.gota, transparent: true, opacity: 0.55 }),
+    () => new THREE.LineBasicMaterial({ color: clima.gota, transparent: true, opacity: 0.35 }),
     [],
   );
 
@@ -98,13 +117,13 @@ function Rain({
   useFrame((_, dt) => {
     const attr = geometria.getAttribute('position') as THREE.BufferAttribute;
     const a = attr.array as Float32Array;
-    const bajada = VELOCIDAD * Math.min(dt, 0.05);
+    const bajada = velocidad * Math.min(dt, 0.05);
     for (let i = 0, k = 0; i < a.length; i += 6, k++) {
       a[i + 1] -= bajada;
       a[i + 4] -= bajada;
       if (a[i + 4] < pisos[k]) {
         a[i + 1] = altura;
-        a[i + 4] = altura - LARGO_GOTA;
+        a[i + 4] = altura - largo;
       }
     }
     attr.needsUpdate = true;
@@ -157,12 +176,11 @@ export function WeatherLayer() {
       {verNubes && plan.puffs.length > 0 && (
         <Clouds puffs={plan.puffs} lluvia={!!hoy.lluvia} sombra={sombra} />
       )}
-      {hoy.lluvia && (
+      {hoy.lluvia && plan.nubes.length > 0 && (
         <Rain
-          cantidad={Math.round((GOTAS[hoy.lluvia.intensidad] * rows * cols) / 100)}
-          ancho={cols}
-          fondo={rows}
-          altura={plan.base - 0.2}
+          nubes={plan.nubes}
+          intensidad={hoy.lluvia.intensidad}
+          altura={plan.base}
           suelo={suelo}
           seed={seed}
         />
