@@ -47,6 +47,8 @@ export interface UbicacionParcela {
 
 export interface EstadoCasas {
   estado: 'ok' | 'error' | 'omitido';
+  /** OSM no respondió y se usa la última copia buena guardada */
+  respaldo?: boolean;
   n: number;
   mensaje: string;
   fuente: string;
@@ -97,6 +99,17 @@ export interface JuninState {
   /** null = sin comprobar; false = no hay servidor (Fase 1) */
   servidor: boolean | null;
   ultimoResultado: ResultadoRendimiento | null;
+  /** Fase 6: frescura de los datos locales */
+  frescura: {
+    /** Fecha en que el pipeline generó public/data/junin */
+    generado: string | null;
+    /** Último mes con clima observado (lo demás es pronóstico) */
+    ultimo_mes_observado: string | null;
+    /** Fecha de descarga más reciente por paso del pipeline */
+    descargas: Record<string, string>;
+    /** Cuándo cargó (o recargó) la app sus datos locales */
+    cargado: string | null;
+  };
 }
 
 const ayer = () => {
@@ -139,4 +152,5 @@ export const useJuninStore = create<JuninState>()(() => ({
   plan: [],
   servidor: null,
   ultimoResultado: null,
+  frescura: { generado: null, ultimo_mes_observado: null, descargas: {}, cargado: null },
 }));

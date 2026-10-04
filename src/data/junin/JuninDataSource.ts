@@ -18,17 +18,21 @@ import type {
   SerieDiaria,
   SimuladorEscenarios,
 } from './types';
+import { medir } from '../registro';
 
 /** Lee un JSON por su ruta relativa a public/data/junin */
 export type LectorJson = (ruta: string) => Promise<unknown>;
 
+/** Lector por fetch; cada pedido queda en el registro de consultas (Fase 6) */
 export const lectorFetch =
   (base: string): LectorJson =>
-  async (ruta) => {
-    const r = await fetch(`${base.replace(/\/$/, '')}/${ruta}`);
-    if (!r.ok) throw new Error(`No se pudo cargar ${ruta} (${r.status})`);
-    return r.json();
-  };
+  (ruta) =>
+    medir('datos_locales', ruta, async () => {
+      // `no-cache`: «Actualizar datos» revalida con el servidor en vez de usar la caché HTTP
+      const r = await fetch(`${base.replace(/\/$/, '')}/${ruta}`, { cache: 'no-cache' });
+      if (!r.ok) throw new Error(`No se pudo cargar ${ruta} (${r.status})`);
+      return r.json();
+    });
 
 export class JuninDataSource {
   private readonly cache = new Map<string, Promise<unknown>>();
@@ -46,7 +50,18 @@ export class JuninDataSource {
     return p as Promise<T>;
   }
 
+  /** «Actualizar datos»: olvida lo cargado en esta sesión; el próximo pedido va al servidor */
+  limpiar(): void {
+    this.cache.clear();
+  }
+
   manifiesto = () => this.leer<Manifiesto>('manifest.json');
+
+  /** Bitácora de descargas del pipeline (fecha de cada archivo de origen) */
+  registroDescargas = () =>
+    this.leer<{ fecha_hora: string; script: number | string; archivo: string; estado: string }[]>(
+      'meta/registro_descargas.json',
+    );
 
   /** Núcleo del simulador: escenarios, cultivos, fenología, AquaCrop, reglas, puntos y aptitud */
   async nucleo(): Promise<NucleoJunin> {

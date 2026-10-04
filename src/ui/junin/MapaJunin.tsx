@@ -25,10 +25,12 @@ import {
   COLOR_FIDELIDAD,
   esBaseHD,
   ETIQUETAS_HD,
+  fechaCapa,
   OVERLAYS_NASA,
   urlGibs,
   type CapaGibs,
 } from './colores';
+import { registrarConsulta } from '@/data/registro';
 import { useResultadoJunin } from './useJunin';
 
 const JUNIN_BOUNDS = L.latLngBounds([-12.9, -76.8], [-10.4, -73.1]);
@@ -114,6 +116,17 @@ export function MapaJunin() {
         maxZoom: ZOOM_MAX,
         attribution: c.atribucion,
       });
+      let erroresHd = 0;
+      t.on('tileerror', () => erroresHd++);
+      t.once('load', () =>
+        registrarConsulta({
+          fuente: 'imagen_hd',
+          recurso: c.nombre,
+          ms: null,
+          estado: erroresHd > 3 ? 'error' : 'ok',
+          mensaje: erroresHd ? `${erroresHd} teselas fallaron` : undefined,
+        }),
+      );
       t.addTo(m);
       t.bringToBack();
       capas.current.base = t;
@@ -133,6 +146,15 @@ export function MapaJunin() {
         juninController.avisarTeselas(
           errores > 3 ? `Sin imagen de ${c.nombre} para ${s.fecha}. Prueba otra fecha.` : null,
         ),
+      );
+      t.once('load', () =>
+        registrarConsulta({
+          fuente: 'nasa_gibs',
+          recurso: `${c.id} · ${fechaCapa(c, s.fecha)}`,
+          ms: null,
+          estado: errores > 3 ? 'error' : 'ok',
+          mensaje: errores ? `${errores} teselas sin imagen` : undefined,
+        }),
       );
       return t;
     };

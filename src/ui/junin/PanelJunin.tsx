@@ -32,6 +32,7 @@ import {
   OVERLAYS_NASA,
 } from './colores';
 import { GraficoEscenario } from './GraficoEscenario';
+import { OrigenFrescura } from './OrigenFrescura';
 import { useResultadoJunin } from './useJunin';
 
 function Paso({
@@ -442,9 +443,10 @@ export function PanelJunin() {
             ))}
             {s.casas && (
               <p
-                className={`text-2xs ${s.casas.estado === 'ok' ? 'text-ui-ink-muted' : 'font-semibold text-amber-700'}`}
+                className={`text-2xs ${s.casas.estado === 'ok' && !s.casas.respaldo ? 'text-ui-ink-muted' : 'font-semibold text-amber-700'}`}
               >
-                🏠 Casas ({s.casas.fuente}, en vivo): {s.casas.mensaje}
+                🏠 Casas ({s.casas.fuente}, {s.casas.respaldo ? 'copia guardada' : 'en vivo'}):{' '}
+                {s.casas.mensaje}
               </p>
             )}
             {s.resumen.advertencias.length > 0 && (
@@ -602,6 +604,9 @@ export function PanelJunin() {
             </button>
           </>
         )}
+      </Paso>
+      <Paso n="ⓘ" titulo="Origen y frescura de los datos">
+        <OrigenFrescura />
       </Paso>
     </div>
   );

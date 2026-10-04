@@ -7,6 +7,8 @@
  */
 import { MARGEN_CASA_M } from '@/domain/junin/estadoChunk';
 import type { Anillo } from '@/domain/junin/parcela';
+import { esFresca } from '../fuentes';
+import { registrarConsulta } from '../registro';
 
 const API_OSM = 'https://api.openstreetmap.org/api/0.6/map';
 const OVERPASS = 'https://overpass-api.de/api/interpreter';
@@ -21,9 +23,34 @@ export interface ResultadoCasas {
   consultado: string;
   mensaje: string;
   latencia_ms: number;
+  /** true = OSM no respondió y se usa la última copia buena guardada (Fase 6) */
+  respaldo?: boolean;
 }
 
+/** Copia buena guardada 24 h como fresca; después solo sirve de respaldo si OSM falla */
+export const TTL_CASAS_H = 24;
+const PREFIJO = 'lambda.osm.';
 const cache = new Map<string, ResultadoCasas>();
+
+function leerGuardado(clave: string): ResultadoCasas | null {
+  const m = cache.get(clave);
+  if (m) return m;
+  try {
+    const t = localStorage.getItem(PREFIJO + clave);
+    return t ? (JSON.parse(t) as ResultadoCasas) : null;
+  } catch {
+    return null;
+  }
+}
+
+function guardar(clave: string, r: ResultadoCasas): void {
+  cache.set(clave, r);
+  try {
+    localStorage.setItem(PREFIJO + clave, JSON.stringify(r));
+  } catch {
+    /* sin almacenamiento (modo privado): queda solo en memoria */
+  }
+}
 
 interface ElementoOverpass {
   type: string;
@@ -73,17 +100,39 @@ export function parsearOsmXml(xml: string): Anillo[] {
   return out.filter((a) => a.length >= 3);
 }
 
-/** bbox = [oeste, sur, este, norte]; se agrega un margen para casas que tocan el borde */
-export async function casasEnVivo(bbox: [number, number, number, number]): Promise<ResultadoCasas> {
+/**
+ * bbox = [oeste, sur, este, norte]; se agrega un margen para casas que tocan el borde.
+ * Una copia de menos de TTL_CASAS_H horas se reutiliza; `forzar` («Actualizar datos») la ignora.
+ */
+export async function casasEnVivo(
+  bbox: [number, number, number, number],
+  forzar = false,
+): Promise<ResultadoCasas> {
   const [w0, s0, e0, n0] = bbox;
   const m = 0.0001; // ~11 m
   const [w, s, e, n] = [w0 - m, s0 - m, e0 + m, n0 + m];
   const clave = [w, s, e, n].map((x) => x.toFixed(5)).join(',');
-  const enCache = cache.get(clave);
-  if (enCache && enCache.estado === 'ok') return enCache;
+  const guardado = leerGuardado(clave);
+  if (!forzar && guardado && esFresca(guardado.consultado, TTL_CASAS_H)) {
+    registrarConsulta({
+      fuente: 'casas',
+      recurso: `bbox ${clave}`,
+      ms: 0,
+      estado: 'ok',
+      mensaje: `copia del ${guardado.consultado.slice(0, 16).replace('T', ' ')} (vigente ${TTL_CASAS_H} h)`,
+    });
+    return guardado;
+  }
   const ahora = new Date().toISOString();
   const ladoKm = Math.max((n - s) * 111.32, (e - w) * 111.32 * Math.cos((((s + n) / 2) * Math.PI) / 180));
-  if (ladoKm > LADO_MAX_CONSULTA_KM)
+  if (ladoKm > LADO_MAX_CONSULTA_KM) {
+    registrarConsulta({
+      fuente: 'casas',
+      recurso: `bbox ${clave}`,
+      ms: 0,
+      estado: 'omitido',
+      mensaje: 'parcela muy grande',
+    });
     return {
       estado: 'omitido',
       casas: [],
@@ -92,6 +141,7 @@ export async function casasEnVivo(bbox: [number, number, number, number]): Promi
       latencia_ms: 0,
       mensaje: `Parcela de más de ${LADO_MAX_CONSULTA_KM} km de lado: no se verificaron casas.`,
     };
+  }
   const t0 = performance.now();
   const listo = (casas: Anillo[], fuente: string): ResultadoCasas => {
     const res: ResultadoCasas = {
@@ -104,7 +154,14 @@ export async function casasEnVivo(bbox: [number, number, number, number]): Promi
         ? `${casas.length} casa(s) o edificación(es) en OpenStreetMap; se bloquean con ${MARGEN_CASA_M} m de margen.`
         : 'OpenStreetMap no tiene casas registradas aquí (en zonas rurales puede faltar alguna: revisa la imagen).',
     };
-    cache.set(clave, res);
+    guardar(clave, res);
+    registrarConsulta({
+      fuente: 'casas',
+      recurso: `${fuente} · bbox ${clave}`,
+      ms: res.latencia_ms,
+      estado: 'ok',
+      mensaje: res.mensaje,
+    });
     return res;
   };
   let ultimoError: string;
@@ -127,12 +184,29 @@ export async function casasEnVivo(bbox: [number, number, number, number]): Promi
   } catch (err) {
     ultimoError += ` · ${(err as Error).message}`;
   }
+  const ms = Math.round(performance.now() - t0);
+  if (guardado) {
+    // Respaldo: la última copia buena, avisando que está vieja
+    registrarConsulta({
+      fuente: 'casas',
+      recurso: `bbox ${clave}`,
+      ms,
+      estado: 'respaldo',
+      mensaje: `OSM no respondió (${ultimoError}); se usa la copia del ${guardado.consultado.slice(0, 10)}`,
+    });
+    return {
+      ...guardado,
+      respaldo: true,
+      mensaje: `OpenStreetMap no respondió: se usa la copia guardada del ${guardado.consultado.slice(0, 16).replace('T', ' ')} (${guardado.casas.length} casa(s)). Puede estar desactualizada.`,
+    };
+  }
+  registrarConsulta({ fuente: 'casas', recurso: `bbox ${clave}`, ms, estado: 'error', mensaje: ultimoError });
   return {
     estado: 'error',
     casas: [],
     fuente: 'OpenStreetMap',
     consultado: ahora,
-    latencia_ms: Math.round(performance.now() - t0),
+    latencia_ms: ms,
     mensaje: `No se pudo consultar OpenStreetMap (${ultimoError}): las casas NO se verificaron.`,
   };
 }

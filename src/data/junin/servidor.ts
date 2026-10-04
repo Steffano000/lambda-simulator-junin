@@ -4,13 +4,16 @@
  * responde, la app sigue con los datos locales (Fase 1).
  */
 import type { Anillo, GrillaChunks } from '@/domain/junin/parcela';
+import { medir } from '../registro';
 
 export const API_URL: string | undefined = import.meta.env.VITE_API_URL || undefined;
 
 export async function servidorDisponible(): Promise<boolean> {
   if (!API_URL) return false;
   try {
-    const r = await fetch(`${API_URL}/salud`, { signal: AbortSignal.timeout(2500) });
+    const r = await medir('servidor', '/salud', () =>
+      fetch(`${API_URL}/salud`, { signal: AbortSignal.timeout(2500) }),
+    );
     return r.ok;
   } catch {
     return false;
@@ -20,12 +23,14 @@ export async function servidorDisponible(): Promise<boolean> {
 /** POST /parcela: chunks de 30 m con relieve, suelo, cobertura y NDVI leídos de los TIF */
 export async function chunksDelServidor(anillo: Anillo, celda_m?: number): Promise<GrillaChunks> {
   const q = celda_m ? `?celda_m=${celda_m}` : '';
-  const r = await fetch(`${API_URL}/parcela${q}`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ type: 'Polygon', coordinates: [[...anillo, anillo[0]]] }),
-    signal: AbortSignal.timeout(30_000),
-  });
+  const r = await medir('servidor', `/parcela${q}`, () =>
+    fetch(`${API_URL}/parcela${q}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ type: 'Polygon', coordinates: [[...anillo, anillo[0]]] }),
+      signal: AbortSignal.timeout(30_000),
+    }),
+  );
   if (!r.ok) throw new Error(`El servidor respondió ${r.status}`);
   return (await r.json()) as GrillaChunks;
 }

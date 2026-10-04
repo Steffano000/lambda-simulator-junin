@@ -4,6 +4,7 @@
  */
 import { container } from '@/app/container';
 import { SiembraRepository } from '@/data';
+import { descargasPorScript } from '@/data/fuentes';
 import { JuninRepository } from '@/data/junin';
 import { casasEnVivo } from '@/data/junin/osm';
 import { chunksDelServidor, servidorDisponible } from '@/data/junin/servidor';
@@ -78,11 +79,43 @@ export class JuninController {
         nucleo.puntos.map((p) => JuninRepository.parcela(p.id).catch(() => null)),
       );
       set({ parcelas: parcelas.filter((p): p is Parcela => p != null) });
+      await this.leerFrescura();
       set({ servidor: await servidorDisponible() });
     } catch (e) {
       this.iniciado = false;
       set({ cargando: null, error: `No se pudieron cargar los datos: ${(e as Error).message}` });
     }
+  }
+
+  /** Fase 6: fecha de generación, último mes observado y fecha de descarga por fuente */
+  private async leerFrescura(): Promise<void> {
+    const [man, reg] = await Promise.all([
+      JuninRepository.manifiesto().catch(() => null),
+      JuninRepository.registroDescargas().catch(() => []),
+    ]);
+    set({
+      frescura: {
+        generado: man?.generado ?? null,
+        ultimo_mes_observado:
+          ((get().nucleo?.sim.meta as Record<string, unknown> | undefined)?.ultimo_mes_observado as string) ??
+          null,
+        descargas: Object.fromEntries(descargasPorScript(reg)),
+        cargado: new Date().toISOString(),
+      },
+    });
+  }
+
+  /**
+   * «Actualizar datos» (Fase 6): vuelve a pedir los JSON locales (sin la caché de la sesión),
+   * vuelve a consultar las casas en OpenStreetMap y rearma la parcela abierta.
+   */
+  async actualizarDatos(): Promise<void> {
+    const { anillo, celdaElegida } = get();
+    JuninRepository.limpiar();
+    this.iniciado = false;
+    this.indiceProtegidas = null;
+    await this.iniciar();
+    if (anillo) await this.procesar(anillo, celdaElegida, true);
   }
 
   setModo(modo: Modo): void {
@@ -177,7 +210,7 @@ export class JuninController {
    * Pasos 3 a 6: área, ubicación, uso de suelo (incluye casas y áreas protegidas) y chunks.
    * `celdaElegida`: tamaño de chunk elegido en el paso 3; null = automático para este equipo.
    */
-  async procesar(anillo: Anillo, celdaElegida: number | null = null): Promise<void> {
+  async procesar(anillo: Anillo, celdaElegida: number | null = null, forzarCasas = false): Promise<void> {
     const { nucleo, grilla, parcelas, region, limite } = get();
     if (!nucleo || !grilla) return;
     const celda = celdaElegida ?? tamanoChunk(anillo, limite.maxLado);
@@ -207,7 +240,7 @@ export class JuninController {
     chunks ??= construirChunks(anillo, { grilla, parcelas, reglas: nucleo.reglas }, celda);
     // Casas EN VIVO (OpenStreetMap). Si falla, se avisa en el panel; no se asume que no hay casas.
     set({ cargando: 'Buscando casas en OpenStreetMap…', casas: null });
-    const casas = await casasEnVivo(chunks.bbox);
+    const casas = await casasEnVivo(chunks.bbox, forzarCasas);
     const distanciaClimaM = distanciaKm(c.lat, c.lon, pp.lat, pp.lon) * 1000;
     chunks = prepararChunks(chunks, anillo, {
       reglas: nucleo.reglas,
@@ -235,6 +268,7 @@ export class JuninController {
       },
       casas: {
         estado: casas.estado,
+        respaldo: casas.respaldo,
         n: casas.casas.length,
         mensaje: casas.mensaje,
         fuente: casas.fuente,
